@@ -255,6 +255,15 @@ const clear_button = document.getElementById('clear-button') as HTMLButtonElemen
 
 const state_text = document.getElementById('state-text') as HTMLParagraphElement;
 
+
+function clip(m_poly: Polygon, c_poly: Polygon) {
+    // for every edge on main polygon, clip it with every edge on clip polygon
+    m_poly.loops.forEach((loop: Loop) => {
+        // TODO 
+    });
+}
+
+
 enum State {
     MainPolygon,
     ClipPolygon,
