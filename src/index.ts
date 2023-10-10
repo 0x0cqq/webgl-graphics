@@ -98,12 +98,11 @@ function create_program(ctx: WebGLRenderingContext, vertex_shader_source: string
     return program;
 }
 
-function draw_circle(x: number, y: number, r:number = 0.01) {
-    console.log(x, y);
+function draw_circle(x: number, y: number, r: number = 0.01) {
     const n = 100; // n parts
-    
+
     // fill with triangle fan
-    const vertices_data : number[] = [x, y];
+    const vertices_data: number[] = [x, y];
     for (let i = 0; i <= n; i++) {
         const theta = 2 * Math.PI / n * i;
         const _x = x + r * Math.cos(theta);
@@ -123,8 +122,7 @@ function draw_circle(x: number, y: number, r:number = 0.01) {
 }
 
 function draw_polygon(points: Point[]) {
-    console.log(points);
-    const vertices_data : number[] = [];
+    const vertices_data: number[] = [];
     points.forEach((p: Point) => {
         vertices_data.push(p.x, p.y);
     });
@@ -155,13 +153,21 @@ class Point {
     x: number = 0;
     y: number = 0;
 
-    constructor (x: number, y: number) {
+    constructor(x: number, y: number) {
         this.x = x;
         this.y = y;
     }
 
+    same(p: Point): boolean {
+        return Math.abs(this.x - p.x) < eps && Math.abs(this.y - p.y) < eps;
+    }
+
     copy(): Point {
         return new Point(this.x, this.y);
+    }
+
+    toString(): string {
+        return `(${this.x}, ${this.y})`;
     }
 }
 
@@ -170,7 +176,7 @@ class Edge {
     p1: Point;
     p2: Point;
 
-    constructor (p1: Point, p2: Point) {
+    constructor(p1: Point, p2: Point) {
         this.p1 = p1;
         this.p2 = p2;
     }
@@ -180,14 +186,14 @@ class Edge {
     }
 }
 
-function area(edge: Edge, point: Point) : number {
+function area(edge: Edge, point: Point): number {
     const p1 = edge.p1;
     const p2 = edge.p2;
     const p3 = point;
-    return (p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y); 
+    return (p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y);
 }
 
-function intersect(edge1: Edge, edge2: Edge) : Point | null {
+function intersect(edge1: Edge, edge2: Edge): Point | null {
     const area1 = area(edge1, edge2.p1);
     const area2 = area(edge1, edge2.p2);
 
@@ -209,18 +215,18 @@ function intersect(edge1: Edge, edge2: Edge) : Point | null {
     const y = edge1.p1.y + (edge1.p2.y - edge1.p1.y) * t;
 
     return new Point(x, y);
-} 
+}
 
 class Loop {
     points: Point[] = [];
 
-    constructor (points: Point[]) {
+    constructor(points: Point[]) {
         // clone points
         points.forEach((p: Point) => {
             this.points.push(new Point(p.x, p.y));
         });
     }
-    
+
     getedges(): Edge[] {
         const edges: Edge[] = [];
         for (let i = 0; i < this.points.length; i++) {
@@ -230,7 +236,7 @@ class Loop {
         }
         return edges;
     }
-    
+
     copy(): Loop {
         return new Loop(this.points);
     }
@@ -247,6 +253,8 @@ class Polygon {
 const main_polygon = new Polygon();
 const clip_polygon = new Polygon();
 
+const result_polygon = new Polygon();
+
 
 const main_polygon_button = document.getElementById('main-polygon-button') as HTMLButtonElement;
 const clip_polygon_button = document.getElementById('clip-polygon-button') as HTMLButtonElement;
@@ -255,11 +263,166 @@ const clear_button = document.getElementById('clear-button') as HTMLButtonElemen
 
 const state_text = document.getElementById('state-text') as HTMLParagraphElement;
 
+function intersect_loop_polygon(loop: Loop, polygon: Polygon) {
+    const all_intersect_points: Point[] = [];
+    const edges = loop.getedges();
+    edges.forEach((edge: Edge) => {
+        const intersect_points: Point[] = [];
+        polygon.loops.forEach((c_loop: Loop) => {
+            const c_edges = c_loop.getedges();
+            // intersect with edge
+            c_edges.forEach((c_edge: Edge) => {
+                const p = intersect(edge, c_edge);
+                if (p !== null) {
+                    intersect_points.push(p);
+                }
+            });
+        });
+        // sort intersect points
+        intersect_points.sort((p1: Point, p2: Point) => {
+            // sort regarding to the distance to edges.p1
+            const dp1 = (p1.x - edge.p1.x) * (p1.x - edge.p1.x) + (p1.y - edge.p1.y) * (p1.y - edge.p1.y);
+            const dp2 = (p2.x - edge.p1.x) * (p2.x - edge.p1.x) + (p2.y - edge.p1.y) * (p2.y - edge.p1.y);
+            return dp1 - dp2;
+        });
+        // add to all intersect points
+        all_intersect_points.push(edge.p1.copy())
+        all_intersect_points.push(...intersect_points);
+    })
+    return all_intersect_points;
+}
+
+// return the loop and the index of the point
+function find_point_in_map(point: Point, all_points: Map<Loop, Point[]>): [Loop | null, number, Point[]] {
+    for (const [loop, points] of all_points) {
+        const index = find_point_in_array(point, points);
+        if(index !== -1) {
+            return [loop, index, points];
+        }
+    }
+    return [null, -1, []];
+}
+
+// return the index of the point
+function find_point_in_array(point: Point, points: Point[]) {
+    for(let i = 0; i < points.length; i++) {
+        if(points[i].same(point)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+function is_visited(point: Point, visited: Point[]) {
+    for (const p of visited) {
+        if (p.same(point)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function find_not_visited_intersect_point(m_points: Map<Loop, Point[]>, c_points: Map<Loop, Point[]>, visited: Point[]) : Point | null {
+    // visited: a map from loop to a boolean array
+    for (const [loop, points] of m_points) {
+        for (let i = 0; i < points.length; i++) {
+            const p = points[i];
+            if (is_visited(p, visited)) {
+                continue;
+            }
+            const [c_loop, c_index] = find_point_in_map(p, c_points);
+            if (c_loop !== null && c_index !== -1) {
+                // find a not visited intersect point
+                return p;
+            }
+        }
+    }
+    return null;
+}
 
 function clip(m_poly: Polygon, c_poly: Polygon) {
-    // for every edge on main polygon, clip it with every edge on clip polygon
+    const m_points: Map<Loop, Point[]> = new Map();
+    const c_points: Map<Loop, Point[]> = new Map();
     m_poly.loops.forEach((loop: Loop) => {
-        // TODO 
+        // for a loop, construct a list of all points(include intersect points)
+        m_points.set(loop, intersect_loop_polygon(loop, c_poly));
+    });
+    c_poly.loops.forEach((loop: Loop) => {
+        // for a loop, construct a list of all points(include intersect points)
+        c_points.set(loop, intersect_loop_polygon(loop, m_poly));
+    });
+
+    console.log("m_points", m_points);
+    console.log("c_points", c_points);
+
+    // maintain the current loop and the current point
+    const visited_points: Point[] = [];
+
+    // maintain a visited list
+    // find the first intersect point
+    let current_point = find_not_visited_intersect_point(m_points, c_points, visited_points);
+    
+    if(current_point === null) {
+        // no intersection point
+        alert('没有交点');
+        return;
+    }
+
+    const results: Point[][] = [];
+
+    const current_result: Point[] = [];
+
+    while (true) {
+        // if current point is visited, break
+        if (is_visited(current_point, visited_points)) {
+            current_point = find_not_visited_intersect_point(m_points, c_points, visited_points);
+            console.log('find loop', current_result.toString());
+            results.push([]);
+            current_result.forEach((p: Point) => {
+                results[results.length - 1].push(p.copy());
+            });
+            current_result.length = 0;
+
+            if (current_point === null) {
+                // no intersection point left
+                break;
+            }
+        }
+        // set current point to visited
+        const [m_loop, m_index, m_point_list] = find_point_in_map(current_point, m_points);
+        const [c_loop, c_index, c_point_list] = find_point_in_map(current_point, c_points);
+
+        current_result.push(current_point.copy());
+        visited_points.push(current_point.copy());
+
+        if(m_loop === null) {
+            current_point = c_point_list[(c_index + 1) % c_point_list.length];
+            continue;
+        } else if (c_loop === null) {
+            current_point = m_point_list[(m_index + 1) % m_point_list.length];
+            continue;
+        }
+
+        // find next point
+        const m_next_point = m_point_list[(m_index + 1) % m_point_list.length];
+        const c_next_point = c_point_list[(c_index + 1) % c_point_list.length];
+        
+
+        // choose the "right one"
+        const x = area(new Edge(current_point, m_next_point), c_next_point);
+        if(x < 0) {
+            // choose m_next_point
+            current_point = m_next_point.copy();
+        } else {
+            // choose c_next_point
+            current_point = c_next_point.copy();
+        }
+    }
+
+    // copt results to result_polygon
+    result_polygon.loops.length = 0;
+    results.forEach((points: Point[]) => {
+        result_polygon.add_loop(new Loop(points));
     });
 }
 
@@ -269,7 +432,7 @@ enum State {
     ClipPolygon,
 }
 
-var current_state = State.MainPolygon;
+let current_state = State.MainPolygon;
 
 // current loop points
 const current_points: Point[] = [];
@@ -284,21 +447,26 @@ function drawall() {
     // part2: draw current points
     gl.clearColor(1, 1, 1, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
-    
+
     // part1
     bind_color(1, 0, 0); // red
-    console.log('main_polygon', main_polygon)
+    console.log('main_polygon', main_polygon);
     main_polygon.loops.forEach((loop: Loop) => {
         draw_polygon(loop.points);
     });
     bind_color(0, 0, 1); // blue
-    console.log('clip_polygon', clip_polygon)
+    console.log('clip_polygon', clip_polygon);
     clip_polygon.loops.forEach((loop: Loop) => {
+        draw_polygon(loop.points);
+    });
+    bind_color(0, 1, 1); // yellow 
+    console.log('clipped_polygon', result_polygon);
+    result_polygon.loops.forEach((loop: Loop) => {
         draw_polygon(loop.points);
     });
 
     // part2
-    if(current_state === State.MainPolygon) {
+    if (current_state === State.MainPolygon) {
         bind_color(1, 0, 0); // red
     } else {
         bind_color(0, 0, 1); // blue
@@ -306,12 +474,12 @@ function drawall() {
     console.log('current_points', current_points)
     current_points.forEach((p: Point) => {
         draw_circle(p.x, p.y);
-    });    
+    });
 }
 
 main_polygon_button.addEventListener('click', (e) => {
     // change state to main polygon
-    if(current_points.length > 0) {
+    if (current_points.length > 0) {
         alert('请先绘制当前多边形');
         return;
     }
@@ -321,7 +489,7 @@ main_polygon_button.addEventListener('click', (e) => {
 
 clip_polygon_button.addEventListener('click', (e) => {
     // change state to clip polygon
-    if(current_points.length > 0) {
+    if (current_points.length > 0) {
         alert('请先绘制当前多边形');
         return;
     }
@@ -334,13 +502,20 @@ clear_button.addEventListener('click', (e) => {
     // clear all
     main_polygon.loops.length = 0;
     clip_polygon.loops.length = 0;
+    result_polygon.loops.length = 0;
     current_points.length = 0;
+
+    current_state = State.MainPolygon;
+    state_text.innerText = '输入主多边形';
+    
     drawall();
 });
 
 
 clip_button.addEventListener('click', (e) => {
-
+    console.log('clip');
+    clip(main_polygon, clip_polygon);
+    drawall();
 });
 
 canvas.addEventListener('click', (e) => {
@@ -361,14 +536,11 @@ canvas.addEventListener('contextmenu', (e) => {
         return;
     }
     const loop = new Loop(current_points);
-    console.log(loop);
     if (current_state === State.MainPolygon) {
         main_polygon.add_loop(loop);
     } else {
         clip_polygon.add_loop(loop);
     }
-    console.log(main_polygon);
-    console.log(clip_polygon);
     // clear current points
     current_points.length = 0;
     drawall();
