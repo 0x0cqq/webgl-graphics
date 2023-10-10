@@ -11,9 +11,14 @@
     <button id="clip-button">裁剪</button> 
     <br/>
     <button id="clear-button">清除</button>
+    <button id="undo-button">撤销上一个点/多边形</button>
     <br/>
-    <p>左键点击加点，右键绘制当前多边形</p>
+    <p>左键点击加点，右键绘制当前多边形；逆时针绘制外环，顺时针绘制内环。</p>
+    <p>红色：主多边形；蓝色：裁剪多边形；浅蓝色：结果多边形。</p>
     <p id="state-label">当前状态: <span id="state-text">主多边形</span></p>
-    <canvas id="canvas" width="400" height="400" style="border:1px solid #000000;"></canvas>
+    <div style="width: 100%;">
+        <canvas id="canvas" width="400px" height="400px" style="display:block; border:1px solid #000000; margin: 0 auto;">
+        </canvas>
+    </div>
 </body>
 </html>

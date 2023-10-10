@@ -137,6 +137,22 @@ function draw_polygon(points: Point[]) {
     gl.drawArrays(primitive_type, offset, count);
 }
 
+function draw_line(points: Point[]) {
+    const vertices_data: number[] = [];
+    points.forEach((p: Point) => {
+        vertices_data.push(p.x, p.y);
+    });
+    const vertices = new Float32Array(vertices_data);
+
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+    const primitive_type = gl.LINE_STRIP;
+    const offset = 0;
+    const count = vertices.length / 2;
+
+    gl.drawArrays(primitive_type, offset, count);
+}
+
 
 
 function get_gl_coords(x: number, y: number) {
@@ -260,6 +276,7 @@ const main_polygon_button = document.getElementById('main-polygon-button') as HT
 const clip_polygon_button = document.getElementById('clip-polygon-button') as HTMLButtonElement;
 const clip_button = document.getElementById('clip-button') as HTMLButtonElement;
 const clear_button = document.getElementById('clear-button') as HTMLButtonElement;
+const undo_button = document.getElementById('undo-button') as HTMLButtonElement;
 
 const state_text = document.getElementById('state-text') as HTMLParagraphElement;
 
@@ -475,6 +492,7 @@ function drawall() {
     current_points.forEach((p: Point) => {
         draw_circle(p.x, p.y);
     });
+    draw_line(current_points);
 }
 
 main_polygon_button.addEventListener('click', (e) => {
@@ -515,6 +533,24 @@ clear_button.addEventListener('click', (e) => {
 clip_button.addEventListener('click', (e) => {
     console.log('clip');
     clip(main_polygon, clip_polygon);
+    drawall();
+});
+
+undo_button.addEventListener('click', (e) => {
+    console.log('undo');
+    if (current_points.length > 0) {
+        current_points.pop();
+    } else {
+        if (current_state === State.MainPolygon) {
+            if(main_polygon.loops.length > 0) {
+                main_polygon.loops.pop();
+            }
+        } else {
+            if(clip_polygon.loops.length > 0) {
+                clip_polygon.loops.pop();
+            }
+        }
+    }
     drawall();
 });
 
