@@ -202,11 +202,38 @@ class Edge {
     }
 }
 
+function area_p(p1: Point, p2: Point, p3: Point): number {
+    return (p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y);
+}
+
+function dot_p(p1: Point, p2: Point, p3: Point): number {
+    return (p2.x - p1.x) * (p3.x - p1.x) + (p2.y - p1.y) * (p3.y - p1.y);
+}
+
 function area(edge: Edge, point: Point): number {
     const p1 = edge.p1;
     const p2 = edge.p2;
     const p3 = point;
-    return (p2.x - p1.x) * (p3.y - p1.y) - (p3.x - p1.x) * (p2.y - p1.y);
+    return area_p(p1, p2, p3);
+}
+
+function dot(edge: Edge, point: Point): number {
+    const p1 = edge.p1;
+    const p2 = edge.p2;
+    const p3 = point;
+    return dot_p(p1, p2, p3);
+}
+
+function angle(edge: Edge, point: Point): number {
+    const area_value = area(edge, point);
+    const dot_value = dot(edge, point);
+    return Math.atan2(area_value, dot_value);
+}
+
+function angle_p(p1: Point, p2: Point, p3: Point): number {
+    const area_value = area_p(p1, p2, p3);
+    const dot_value = dot_p(p1, p2, p3);
+    return Math.atan2(area_value, dot_value);
 }
 
 function intersect(edge1: Edge, edge2: Edge): Point | null {
@@ -248,7 +275,7 @@ class Loop {
         for (let i = 0; i < this.points.length; i++) {
             const p1 = this.points[i];
             const p2 = this.points[(i + 1) % this.points.length];
-            edges.push(new Edge(p1, p2));
+            edges.push(new Edge(p1.copy(), p2.copy()));
         }
         return edges;
     }
@@ -357,6 +384,42 @@ function find_not_visited_intersect_point(m_points: Map<Loop, Point[]>, c_points
     return null;
 }
 
+function is_in_loop(point: Point, loop: Loop) {
+    // use accumulation method
+    let total_angle = 0;
+    const edges = loop.getedges();
+    edges.forEach((edge: Edge) => {
+        // console.log('angle', angle(edge, point) * 180 / Math.PI);
+        total_angle += angle_p(point, edge.p1, edge.p2);
+    });
+    
+    if(Math.abs(total_angle) < eps) {
+        return 0;
+    } else {
+        return total_angle > 0 ? 1 : -1;
+    }
+}
+
+function is_point_in_poly(point: Point, poly: Polygon) {
+    let is_inner = 0;
+    poly.loops.forEach((loop: Loop) => {
+        is_inner += is_in_loop(point, loop);
+    });
+    return is_inner > 0;
+}
+
+function is_in_polygon(loop: Loop, poly: Polygon) {
+    // if all points in loop is in poly, then loop is in poly
+    let flag = true;
+    loop.points.forEach((p: Point) => {
+        if(is_point_in_poly(p, poly) === false) {
+            console.log('not in polygon');
+            flag = false;
+        }
+    });
+    return flag;
+}
+
 function clip(m_poly: Polygon, c_poly: Polygon) {
     const m_points: Map<Loop, Point[]> = new Map();
     const c_points: Map<Loop, Point[]> = new Map();
@@ -379,17 +442,15 @@ function clip(m_poly: Polygon, c_poly: Polygon) {
     // find the first intersect point
     let current_point = find_not_visited_intersect_point(m_points, c_points, visited_points);
     
-    if(current_point === null) {
-        // no intersection point
-        alert('没有交点');
-        return;
-    }
 
     const results: Point[][] = [];
 
     const current_result: Point[] = [];
 
     while (true) {
+        if(current_point === null) {
+            break;
+        }
         // if current point is visited, break
         if (is_visited(current_point, visited_points)) {
             current_point = find_not_visited_intersect_point(m_points, c_points, visited_points);
@@ -435,6 +496,36 @@ function clip(m_poly: Polygon, c_poly: Polygon) {
             current_point = c_next_point.copy();
         }
     }
+
+    m_poly.loops.forEach((loop: Loop) => {
+        // if this loop don't have any intersection with clip polygon, and it's in all inner and some outer loops
+        // then add it to result
+        if(m_points.get(loop)?.length !== loop.points.length) {
+            return;
+        }
+
+        if(is_in_polygon(loop, c_poly)) {
+            results.push(loop.points);
+            return;
+        }
+    });
+
+
+    c_poly.loops.forEach((loop: Loop) => {
+        // if this loop don't have any intersection with main polygon, and it's in all inner and some outer loops
+        // then add it to result
+        if(c_points.get(loop)?.length !== loop.points.length) {
+            console.log('not intersected')
+            return;
+        }
+
+        if(is_in_polygon(loop, m_poly)) {
+            results.push(loop.points);
+            return;
+        }
+        console.log('not in polygon')
+    });
+
 
     // copt results to result_polygon
     result_polygon.loops.length = 0;

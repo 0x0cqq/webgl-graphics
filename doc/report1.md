@@ -106,3 +106,15 @@
 ### 多个内环
 
 ![Alt text](image-8.png)
+
+### 无交点
+
+![Alt text](image-9.png)
+
+### 多个外环
+
+![Alt text](image-10.png)
+
+### 套来套去
+
+![Alt text](image-11.png)
