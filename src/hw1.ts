@@ -1,5 +1,5 @@
 const canvas = document.getElementById('canvas') as HTMLCanvasElement;
-const gl = canvas.getContext('webgl') as WebGLRenderingContext;
+const gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
 
 const eps = 1e-6;
 
@@ -46,7 +46,7 @@ gl.vertexAttribPointer(a_Position, size, type, normalize, stride, offset);
 const my_color = gl.getUniformLocation(program!, 'my_color');
 
 // functions
-function load_shader(ctx: WebGLRenderingContext, type: number, source: string) {
+function load_shader(ctx: WebGL2RenderingContext, type: number, source: string) {
     const shader = ctx.createShader(type);
     if (shader === null) {
         console.log('unable to create shader');
@@ -66,7 +66,7 @@ function load_shader(ctx: WebGLRenderingContext, type: number, source: string) {
     return shader;
 }
 
-function create_program(ctx: WebGLRenderingContext, vertex_shader_source: string, fragment_shader_source: string) {
+function create_program(ctx: WebGL2RenderingContext, vertex_shader_source: string, fragment_shader_source: string) {
     const vertex_shader = load_shader(ctx, ctx.VERTEX_SHADER, vertex_shader_source);
     const fragment_shader = load_shader(ctx, ctx.FRAGMENT_SHADER, fragment_shader_source);
 
