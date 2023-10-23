@@ -2,7 +2,11 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 module.exports = {
-  entry: './src/index.ts',
+  entry: {
+    main: './src/index.ts',
+    hw1: './src/hw1.ts',
+    hw2: './src/hw2.ts',
+  },
   module: {
     rules: [
       {
@@ -16,12 +20,24 @@ module.exports = {
     extensions: ['.tsx', '.ts', '.js'],
   },
   output: {
-    filename: 'main.js',
+    filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
   },
   plugins: [
     new HtmlWebpackPlugin({
-        template: './src/index.html'
-    })  
+        template: './src/index.html',
+        filename: 'index.html',
+        chunks: ['main']
+    }),
+    new HtmlWebpackPlugin({
+        template: './src/hw1.html',
+        filename: 'hw1.html',
+        chunks: ['hw1']
+    }),
+    new HtmlWebpackPlugin({
+        template: './src/hw2.html',
+        filename: 'hw2.html',
+        chunks: ['hw2']
+    }),
   ]
 };
