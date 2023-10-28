@@ -1,7 +1,7 @@
 import { vec3, mat4 } from "gl-matrix";
 import { rad_to_deg, deg_to_rad } from "./math_utils";
 
-enum CameraMovement {
+export enum CameraMovement {
     FORWARD,
     BACKWARD,
     LEFT,
@@ -104,6 +104,7 @@ export class Camera {
     }
 
     process_mouse_scroll(y_offset: number) {
+        console.log(y_offset);
         if (this.zoom >= 1.0 && this.zoom <= 45.0) {
             this.zoom -= y_offset;
         }

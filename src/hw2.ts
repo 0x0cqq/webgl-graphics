@@ -1,6 +1,13 @@
 import { mat4, vec3, vec4 } from 'gl-matrix';
 import * as twgl from 'twgl.js';
-import { Camera } from './camera';
+import { Camera, CameraMovement } from './camera';
+
+import negx from "./assets/negx.jpg";
+import negy from "./assets/negy.jpg";
+import negz from "./assets/negz.jpg";
+import posx from "./assets/posx.jpg";
+import posy from "./assets/posy.jpg";
+import posz from "./assets/posz.jpg";
 
 
 const vertexShaderSource = `#version 300 es
@@ -8,7 +15,9 @@ const vertexShaderSource = `#version 300 es
 // an attribute is an input (in) to a vertex shader.
 // It will receive data from a buffer
 in vec4 a_position;
-in vec4 a_color;
+
+
+uniform vec4 u_color;
 
 // A matrix to transform the positions by
 uniform mat4 u_matrix;
@@ -22,7 +31,7 @@ void main() {
   gl_Position = u_matrix * a_position;
 
   // Pass the color to the fragment shader.
-  v_color = a_color;
+  v_color = u_color;
 }
 `;
 
@@ -33,11 +42,40 @@ precision highp float;
 // the varied color passed from the vertex shader
 in vec4 v_color;
 
+uniform vec4 u_colorMult;
+
 // we need to declare an output for the fragment shader
 out vec4 outColor;
 
 void main() {
-  outColor = v_color;
+  outColor = v_color * u_colorMult;
+}
+`;
+
+
+const skyboxVertexShaderSource = `#version 300 es
+in vec4 a_position;
+out vec4 v_position;
+void main() {
+  v_position = a_position;
+  gl_Position = vec4(a_position.xy, 1, 1);
+}
+`;
+
+const skyboxFragmentShaderSource = `#version 300 es
+precision highp float;
+
+uniform samplerCube u_skybox;
+uniform mat4 u_viewDirectionProjectionInverse;
+
+in vec4 v_position;
+
+// we need to declare an output for the fragment shader
+out vec4 outColor;
+
+void main() {
+  vec4 t = u_viewDirectionProjectionInverse * v_position;
+  outColor = texture(u_skybox, normalize(t.xyz / t.w));
 }
 `;
 
@@ -81,6 +119,7 @@ const flattenedPrimitives = {
   "createCubeBufferInfo": createFlattenedFunc(twgl.primitives.createCubeVertices, 6),
   "createSphereBufferInfo": createFlattenedFunc(twgl.primitives.createSphereVertices, 6),
   "createTruncatedConeBufferInfo": createFlattenedFunc(twgl.primitives.createTruncatedConeVertices, 6),
+  "createXYQuadBufferInfo": createFlattenedFunc(twgl.primitives.createXYQuadVertices, 6),
 };
 
 
@@ -94,17 +133,74 @@ function main() {
     return;
   }
 
-  twgl.setDefaults({attribPrefix: "a_"});
-
   // create a camera
   const camera = new Camera(vec3.fromValues(0.0, 0.0, 4.0));
 
+  // catch scroll event to zoom in/out
+  document.addEventListener('wheel', function(e) {
+    camera.process_mouse_scroll(e.deltaY > 0 ? 1 : -1);
+  });
+  // catch key event to move camera
+  document.addEventListener('keydown', function(e) {
+    switch (e.key) {
+      case 'w':
+        camera.process_keyboard(CameraMovement.FORWARD, 0.1);
+        break;
+      case 's':
+        camera.process_keyboard(CameraMovement.BACKWARD, 0.1);
+        break;
+      case 'a':
+        camera.process_keyboard(CameraMovement.LEFT, 0.1);
+        break;
+      case 'd':
+        camera.process_keyboard(CameraMovement.RIGHT, 0.1);
+        break;
+    }
+  });
+  // catch mouse down/up event to rotate camera
+  let mouse_down = false, last_x = 0, last_y = 0;
+  document.addEventListener('mousedown', function(e) {
+    mouse_down = true;
+    last_x = e.clientX;
+    last_y = e.clientY;
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!mouse_down) return;
+    camera.process_mouse_movement(e.clientX - last_x, e.clientY - last_y);
+    last_x = e.clientX;
+    last_y = e.clientY;
+  });
+  document.addEventListener('mouseup', function(e) {
+    mouse_down = false;
+  });
+
+  twgl.setDefaults({attribPrefix: "a_"});
+
+
+
+  // skybox texture
+  const skyboxTexture = twgl.createTexture(gl, {
+    target: gl.TEXTURE_CUBE_MAP,
+    src: [
+      posx, negx,
+      posy, negy,
+      posz, negz,
+    ],
+    min: gl.LINEAR_MIPMAP_LINEAR,
+  });
+
+      
+  
+
   // create a programinfo from shaders
-  const programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
+  const cubeProgramInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
+  const skyboxProgramInfo = twgl.createProgramInfo(gl, [skyboxVertexShaderSource, skyboxFragmentShaderSource]);
 
 
-  const cubeBuffer = flattenedPrimitives.createCubeBufferInfo(gl, 1);
-  const cubeVAO = twgl.createVAOFromBufferInfo(gl, programInfo, cubeBuffer);
+  const cubeBuffer = twgl.primitives.createCubeBufferInfo(gl, 1);
+  const quadBufferInfo = twgl.primitives.createXYQuadBufferInfo(gl);
+  const quadVAO = twgl.createVAOFromBufferInfo(gl, skyboxProgramInfo, quadBufferInfo);
+
 
   // Draw the scene.
   function render() {
@@ -122,24 +218,48 @@ function main() {
     gl.enable(gl.DEPTH_TEST);
     gl.enable(gl.CULL_FACE);
 
-    // Tell it to use our program (pair of shaders)
-    gl.useProgram(programInfo.program);
+
+    // Cube
+    gl.depthFunc(gl.LESS);
+    gl.useProgram(cubeProgramInfo.program);
 
     // set View Matrix from Camera
     // Make a view matrix from the camera matrix.
     const viewMatrix = mat4.multiply(mat4.create(), camera.get_projection_matrix(canvas.width, canvas.height), camera.get_view_matrix());
 
     const uniforms = {
+      u_colorMult: [0.5, 1, 0.5, 1],
       u_matrix: viewMatrix,
+      u_color: [0.5, 0.5, 1, 1],
     };
 
-    gl.bindVertexArray(cubeVAO);
+    twgl.setBuffersAndAttributes(gl, cubeProgramInfo, cubeBuffer);
 
-    twgl.setBuffersAndAttributes(gl, programInfo, cubeBuffer);
-
-    twgl.setUniforms(programInfo, uniforms);
-
+    twgl.setUniforms(cubeProgramInfo, uniforms);
     twgl.drawBufferInfo(gl, cubeBuffer);
+
+    // SkyBox
+
+    gl.depthFunc(gl.LEQUAL);
+    gl.useProgram(skyboxProgramInfo.program);
+
+    gl.bindVertexArray(quadVAO);
+
+
+    var viewDirectionMatrix = mat4.copy(mat4.create(), viewMatrix);
+    viewDirectionMatrix[12] = 0;
+    viewDirectionMatrix[13] = 0;
+    viewDirectionMatrix[14] = 0;
+
+    var viewDirectionProjection = mat4.multiply(mat4.create(), camera.get_projection_matrix(canvas.width, canvas.height), viewDirectionMatrix);
+
+    var viewDirectionProjectionInv = mat4.invert(mat4.create(), viewDirectionProjection);
+
+    twgl.setUniforms(skyboxProgramInfo, {
+      u_viewDirectionProjectionInverse: viewDirectionProjectionInv,
+      u_skybox: skyboxTexture,
+    });
+    twgl.drawBufferInfo(gl, quadBufferInfo);
 
 
     requestAnimationFrame(render);
@@ -147,26 +267,8 @@ function main() {
   requestAnimationFrame(render);
 }
 
-// Fill the current ARRAY_BUFFER buffer
-// with a cube 
-function getDataArray() {
-  var positions = new Float32Array([
-    // front
-    100, 100, 100,
-    200, 100, 100,
-    
-
-
-  ]);
-
-  return positions;
-}
-
-function getColorArray(): Uint8Array {
-  return new Uint8Array([
-
-  ])
-}
 
 
 main();
+
+
