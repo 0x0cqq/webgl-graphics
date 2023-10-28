@@ -1,4 +1,5 @@
 import { vec3, mat4 } from "gl-matrix";
+import { rad_to_deg, deg_to_rad } from "./math_utils";
 
 enum CameraMovement {
     FORWARD,
@@ -29,9 +30,9 @@ export class Camera {
 
     update_camera_vectors() {
         let front = vec3.create();
-        front[0] = Math.cos(this.yaw * Math.PI / 180.0) * Math.cos(this.pitch * Math.PI / 180.0);
-        front[1] = Math.sin(this.pitch * Math.PI / 180.0);
-        front[2] = Math.sin(this.yaw * Math.PI / 180.0) * Math.cos(this.pitch * Math.PI / 180.0);
+        front[0] = Math.cos(deg_to_rad(this.yaw)) * Math.cos(deg_to_rad(this.pitch));
+        front[1] = Math.sin(deg_to_rad(this.pitch));
+        front[2] = Math.sin(deg_to_rad(this.yaw)) * Math.cos(deg_to_rad(this.pitch));
         vec3.normalize(this.front_axis, front);
         vec3.cross(this.right_axis, this.front_axis, this.world_up);
         vec3.normalize(this.right_axis, this.right_axis);
@@ -39,7 +40,7 @@ export class Camera {
         vec3.normalize(this.up_axis, this.up_axis);
     }
     
-    constructor(position: vec3 = vec3.fromValues(0.0, 0.0, 0.0), up_axis: vec3 = vec3.fromValues(0.0, 1.0, 0.0), yaw: number = YAW, pitch: number = PITCH) {
+    constructor(position: vec3 = vec3.fromValues(0.0, 0.0, 100.0), up_axis: vec3 = vec3.fromValues(0.0, 1.0, 0.0), yaw: number = YAW, pitch: number = PITCH) {
         this.position = position;
         this.world_up = up_axis;
         this.yaw = yaw;
@@ -54,6 +55,17 @@ export class Camera {
         vec3.add(center, this.position, this.front_axis);
         mat4.lookAt(view, this.position, center, this.up_axis);
         return view;
+    }
+
+    get_projection_matrix(width: number, height: number): mat4 {
+        const projectionMatrix = mat4.perspective(
+            mat4.create(),
+            deg_to_rad(this.zoom),
+            width / height,
+            1,
+            2000.0
+        );
+        return projectionMatrix;
     }
 
     process_keyboard(direction: CameraMovement, delta_time: number) {
