@@ -7,7 +7,11 @@
     "build": "webpack --mode production"
   },
   "dependencies": {
+    "@aaronjewell/webgl2-utils": "^1.0.1",
+    "@types/webgl2": "^0.0.9",
+    "gl-matrix": "^3.4.3",
     "three": "^0.157.0",
+    "twgl.js": "^5.5.3",
     "webpack": "^5.58.2",
     "webpack-cli": "^4.9.1",
     "webpack-dev-server": "^4.3.1"

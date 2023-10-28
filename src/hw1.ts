@@ -672,3 +672,5 @@ canvas.addEventListener('contextmenu', (e) => {
     current_points.length = 0;
     drawall();
 });
+
+export {}
