@@ -13,10 +13,14 @@ import posz from "./assets/posz.jpg";
 import { SkyBox } from './common/objects/skybox';
 import { Cube } from './common/objects/cube';
 
+import { FrameBufferExporter } from './common/frame_buffer';
+
 function main() {
     // Get A WebGL context
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
     const gl = canvas.getContext("webgl2") as WebGL2RenderingContext;
+    // resize canvas to displaying size
+    twgl.resizeCanvasToDisplaySize(canvas);
 
     if (!gl) {
         alert("No WebGL2! Please use a newer browser.");
@@ -96,33 +100,45 @@ function main() {
     const cubeObject2 = new Cube(gl, vec3.fromValues(0.0, 1.0, 0.0), cubeTexture, vec3.fromValues(0, 1, 0));
 
     const objects = [skyboxObject, cubeObject, cubeObject2];
-
+    
+    const myFrameBuffer = twgl.createFramebufferInfo(gl);
+    twgl.bindFramebufferInfo(gl, null);
+    let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if(status != gl.FRAMEBUFFER_COMPLETE){
+      console.log("Invalid framebuffer");
+    } else{
+      console.log("Success creating framebuffer");
+    }
+    const myFrameBufferExporter = new FrameBufferExporter(gl, myFrameBuffer);
 
 
     // Draw the scene.
     function render(time: number) {
         time *= 0.001;  // convert to seconds
-        // resize canvas to displaying size
-        twgl.resizeCanvasToDisplaySize(canvas);
 
-        // Tell WebGL how to convert from clip space to pixels
-        gl.viewport(0, 0, canvas.width, canvas.height);
-
+        // bind to framebuffer
+        twgl.bindFramebufferInfo(gl, myFrameBuffer);
+        
         // Clear the canvas
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
+        
         // turn on culling & depth test
         gl.enable(gl.DEPTH_TEST);
 
-
+        // update cube position
         cubeObject.setPosition(vec3.fromValues(Math.cos(time) * 2.0, Math.sin(time) * 2.0, 0.0));
-        
+
 
         // Render objects
-        objects.forEach((obj) => {
-            obj.render(camera, canvas);
-        });
+        for (const object of objects) {
+            object.render(camera, canvas);
+        }
+
+        // render framebuffer texture to screen
+        twgl.bindFramebufferInfo(gl);
+        myFrameBufferExporter.render(canvas)
+
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);

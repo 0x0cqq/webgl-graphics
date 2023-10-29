@@ -13,7 +13,7 @@ export class Cube extends BasicObject {
     cubeVAO: WebGLVertexArrayObject;
     texture: WebGLTexture;
     color: vec3;
-    constructor(gl: WebGL2RenderingContext, position: vec3, texture: WebGLTexture, color: vec3 = vec3.fromValues(1, 1, 1)) {
+    constructor(gl: WebGL2RenderingContext, position: vec3, texture: WebGLTexture | null, color: vec3 = vec3.fromValues(1, 1, 1)) {
         let last = 0;
         super(gl, vertexShaderSource, fragmentShaderSource);
         this.position = position;
@@ -21,7 +21,21 @@ export class Cube extends BasicObject {
         console.log(vertices)
         this.cubeBuffer = twgl.createBufferInfoFromArrays(gl, vertices);
         this.cubeVAO = twgl.createVAOFromBufferInfo(gl, this.programInfo, this.cubeBuffer)!;
-        this.texture = texture;
+        if(texture == null) {
+            const textureOptions = {
+                min: gl.NEAREST,
+                mag: gl.NEAREST,
+                src: [
+                    255, 255, 255, 255,
+                    255, 255, 255, 255,
+                    255, 255, 255, 255,
+                    255, 255, 255, 255,
+                ],
+            };
+            this.texture = twgl.createTexture(gl, textureOptions)
+        } else {
+            this.texture = texture;
+        }
         this.color = color;
     }
 
@@ -44,7 +58,7 @@ export class Cube extends BasicObject {
             u_matrix: viewMatrix,
             u_world_matrix: mat4.fromTranslation(mat4.create(), this.position),
             u_color: vec4.fromValues(this.color[0], this.color[1], this.color[2], 1),
-            u_texture: this.texture,
+            u_diffuse: this.texture,
         };
 
         twgl.setUniforms(this.programInfo, uniforms);
