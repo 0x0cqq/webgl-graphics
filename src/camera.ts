@@ -16,10 +16,10 @@ const ZOOM = 45.0;
 
 export class Camera {
     position: vec3 = vec3.fromValues(0.0, 0.0, 0.0);
-    front_axis: vec3 = vec3.fromValues(0.0, 1.0, 0.0);
-    up_axis: vec3 = vec3.fromValues(0.0, 0.0, 1.0);
+    front_axis: vec3 = vec3.fromValues(0.0, 0.0, -1.0);
+    up_axis: vec3 = vec3.fromValues(0.0, 1.0, 0.0);
     right_axis: vec3 = vec3.fromValues(1.0, 0.0, 0.0);
-    world_up: vec3 = vec3.fromValues(0.0, 1.0, 0.0);
+    world_up: vec3;
 
     yaw: number;
     pitch: number;
@@ -38,14 +38,18 @@ export class Camera {
         vec3.normalize(this.right_axis, this.right_axis);
         vec3.cross(this.up_axis, this.right_axis, this.front_axis);
         vec3.normalize(this.up_axis, this.up_axis);
+        console.log('--------------------------------------')
+        console.log('front', this.front_axis[0].toFixed(2), this.front_axis[1].toFixed(2), this.front_axis[2].toFixed(2))
+        console.log('up', this.up_axis[0].toFixed(2), this.up_axis[1].toFixed(2), this.up_axis[2].toFixed(2))
+        console.log('right', this.right_axis[0].toFixed(2), this.right_axis[1].toFixed(2), this.right_axis[2].toFixed(2))
     }
+
     
-    constructor(position: vec3 = vec3.fromValues(0.0, 0.0, 100.0), up_axis: vec3 = vec3.fromValues(0.0, 1.0, 0.0), yaw: number = YAW, pitch: number = PITCH) {
+    constructor(position: vec3 = vec3.fromValues(0.0, 0.0, 1.0), up: vec3 = vec3.fromValues(0.0, 1.0, 0.0), yaw: number = YAW, pitch: number = PITCH) {
         this.position = position;
-        this.world_up = up_axis;
+        this.world_up = up;
         this.yaw = yaw;
         this.pitch = pitch;
-        this.front_axis = vec3.fromValues(0.0, 0.0, -1.0);
         this.update_camera_vectors();
     }
 
@@ -53,6 +57,8 @@ export class Camera {
         let view = mat4.create();
         let center = vec3.create();
         vec3.add(center, this.position, this.front_axis);
+        // console.log('center', center[0].toFixed(2), center[1].toFixed(2), center[2].toFixed(2))
+        // console.log('up_axis', this.up_axis[0].toFixed(2), this.up_axis[1].toFixed(2), this.up_axis[2].toFixed(2));
         mat4.lookAt(view, this.position, center, this.up_axis);
         return view;
     }
@@ -88,7 +94,11 @@ export class Camera {
         x_offset *= this.mouse_sensitivity;
         y_offset *= this.mouse_sensitivity;
 
-        this.yaw += x_offset;
+        let new_yaw = this.yaw + x_offset;
+        
+        this.yaw = new_yaw;
+
+
         this.pitch += y_offset;
 
         if (constrain_pitch) {
@@ -105,14 +115,14 @@ export class Camera {
 
     process_mouse_scroll(y_offset: number) {
         console.log(y_offset);
-        if (this.zoom >= 1.0 && this.zoom <= 45.0) {
+        if (this.zoom >= 1.0 && this.zoom <= 90.0) {
             this.zoom -= y_offset;
         }
         if (this.zoom <= 1.0) {
             this.zoom = 1.0;
         }
-        if (this.zoom >= 45.0) {
-            this.zoom = 45.0;
+        if (this.zoom >= 90.0) {
+            this.zoom = 90.0;
         }
     }
     
