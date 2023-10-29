@@ -38,10 +38,10 @@ export class Camera {
         vec3.normalize(this.right_axis, this.right_axis);
         vec3.cross(this.up_axis, this.right_axis, this.front_axis);
         vec3.normalize(this.up_axis, this.up_axis);
-        console.log('--------------------------------------')
-        console.log('front', this.front_axis[0].toFixed(2), this.front_axis[1].toFixed(2), this.front_axis[2].toFixed(2))
-        console.log('up', this.up_axis[0].toFixed(2), this.up_axis[1].toFixed(2), this.up_axis[2].toFixed(2))
-        console.log('right', this.right_axis[0].toFixed(2), this.right_axis[1].toFixed(2), this.right_axis[2].toFixed(2))
+        // console.log('--------------------------------------')
+        // console.log('front', this.front_axis[0].toFixed(2), this.front_axis[1].toFixed(2), this.front_axis[2].toFixed(2))
+        // console.log('up', this.up_axis[0].toFixed(2), this.up_axis[1].toFixed(2), this.up_axis[2].toFixed(2))
+        // console.log('right', this.right_axis[0].toFixed(2), this.right_axis[1].toFixed(2), this.right_axis[2].toFixed(2))
     }
 
     
