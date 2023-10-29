@@ -79,15 +79,28 @@ function main() {
         min: gl.LINEAR_MIPMAP_LINEAR,
     });
     const skyboxObject = new SkyBox(gl, skyboxTexture);
-    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0));
 
-    const objects = [skyboxObject, cubeObject];
+    const cubeTexture = twgl.createTexture(gl, {
+        min: gl.NEAREST,
+        mag: gl.NEAREST,
+        src: [
+            255, 255, 255, 255,
+            192, 192, 192, 255,
+            192, 192, 192, 255,
+            255, 255, 255, 255,
+        ],
+    });
+    
+
+    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), cubeTexture, vec3.fromValues(1, 0, 0));
+    const cubeObject2 = new Cube(gl, vec3.fromValues(0.0, 1.0, 0.0), cubeTexture, vec3.fromValues(0, 1, 0));
+
+    const objects = [skyboxObject, cubeObject, cubeObject2];
 
 
 
     // Draw the scene.
     function render(time: number) {
-        console.log(time);
         time *= 0.001;  // convert to seconds
         // resize canvas to displaying size
         twgl.resizeCanvasToDisplaySize(canvas);

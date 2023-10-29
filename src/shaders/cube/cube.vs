@@ -3,8 +3,9 @@
 // an attribute is an input (in) to a vertex shader.
 // It will receive data from a buffer
 in vec4 a_position;
+in vec2 a_texcoord;
 
-
+// color to pass to the fragment shader
 uniform vec4 u_color;
 
 // A matrix to transform the positions by
@@ -15,6 +16,7 @@ uniform mat4 u_world_matrix;
 
 // a varying the color to the fragment shader
 out vec4 v_color;
+out vec2 v_texcoord;
 
 // all shaders have a main function
 void main() {
@@ -23,4 +25,5 @@ void main() {
 
   // Pass the color to the fragment shader.
   v_color = u_color;
+  v_texcoord = a_texcoord;
 }

@@ -1,4 +1,4 @@
-import { mat4, vec3 } from "gl-matrix";
+import { mat4, vec3, vec4 } from "gl-matrix";
 import * as twgl from "twgl.js";
 
 import { Camera } from "../camera";
@@ -11,11 +11,18 @@ export class Cube extends BasicObject {
     position: vec3;
     cubeBuffer: twgl.BufferInfo;
     cubeVAO: WebGLVertexArrayObject;
-    constructor(gl: WebGL2RenderingContext, position: vec3) {
+    texture: WebGLTexture;
+    color: vec3;
+    constructor(gl: WebGL2RenderingContext, position: vec3, texture: WebGLTexture, color: vec3 = vec3.fromValues(1, 1, 1)) {
+        let last = 0;
         super(gl, vertexShaderSource, fragmentShaderSource);
         this.position = position;
-        this.cubeBuffer = twgl.primitives.createCubeBufferInfo(gl, 1);
+        const vertices = twgl.primitives.createCubeVertices(1);
+        console.log(vertices)
+        this.cubeBuffer = twgl.createBufferInfoFromArrays(gl, vertices);
         this.cubeVAO = twgl.createVAOFromBufferInfo(gl, this.programInfo, this.cubeBuffer)!;
+        this.texture = texture;
+        this.color = color;
     }
 
     setPosition(position: vec3) {
@@ -34,10 +41,10 @@ export class Cube extends BasicObject {
         gl.bindVertexArray(this.cubeVAO);
 
         const uniforms = {
-            u_colorMult: [1, 0, 0, 1],
             u_matrix: viewMatrix,
             u_world_matrix: mat4.fromTranslation(mat4.create(), this.position),
-            u_color: [1, 1, 1, 1],
+            u_color: vec4.fromValues(this.color[0], this.color[1], this.color[2], 1),
+            u_texture: this.texture,
         };
 
         twgl.setUniforms(this.programInfo, uniforms);
