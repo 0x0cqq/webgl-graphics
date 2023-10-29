@@ -1,6 +1,6 @@
 import { mat4, vec3, vec4 } from 'gl-matrix';
 import * as twgl from 'twgl.js';
-import { Camera, CameraMovement } from './camera';
+import { Camera, CameraMovement } from './common/camera';
 
 import negx from "./assets/negx.jpg";
 import negy from "./assets/negy.jpg";
@@ -9,119 +9,11 @@ import posx from "./assets/posx.jpg";
 import posy from "./assets/posy.jpg";
 import posz from "./assets/posz.jpg";
 
+import skyboxVertexShaderSource from "./shaders/skybox/skybox.vs";
+import skyboxFragmentShaderSource from "./shaders/skybox/skybox.fs";
 
-const vertexShaderSource = `#version 300 es
-
-// an attribute is an input (in) to a vertex shader.
-// It will receive data from a buffer
-in vec4 a_position;
-
-
-uniform vec4 u_color;
-
-// A matrix to transform the positions by
-uniform mat4 u_matrix;
-
-// a varying the color to the fragment shader
-out vec4 v_color;
-
-// all shaders have a main function
-void main() {
-  // Multiply the position by the matrix.
-  gl_Position = u_matrix * a_position;
-
-  // Pass the color to the fragment shader.
-  v_color = u_color;
-}
-`;
-
-const fragmentShaderSource = `#version 300 es
-
-precision highp float;
-
-// the varied color passed from the vertex shader
-in vec4 v_color;
-
-uniform vec4 u_colorMult;
-
-// we need to declare an output for the fragment shader
-out vec4 outColor;
-
-void main() {
-  outColor = v_color * u_colorMult;
-}
-`;
-
-
-const skyboxVertexShaderSource = `#version 300 es
-in vec4 a_position;
-out vec4 v_position;
-void main() {
-  v_position = a_position;
-  gl_Position = vec4(a_position.xy, 1, 1);
-}
-`;
-
-const skyboxFragmentShaderSource = `#version 300 es
-precision highp float;
-
-uniform samplerCube u_skybox;
-uniform mat4 u_viewDirectionProjectionInverse;
-
-in vec4 v_position;
-
-// we need to declare an output for the fragment shader
-out vec4 outColor;
-
-void main() {
-  vec4 t = u_viewDirectionProjectionInverse * v_position;
-  outColor = texture(u_skybox, normalize(t.xyz / t.w));
-}
-`;
-
-
-// this function takes a set of indexed vertices
-// It deindexed them. It then adds random vertex
-// colors to each triangle. Finally it passes
-// the result to createBufferInfoFromArrays and
-// returns a twgl.BufferInfo
-function createFlattenedVertices(gl: any, vertices: any, vertsPerColor: any) {
-  let last: number;
-  return twgl.createBufferInfoFromArrays(
-      gl,
-      twgl.primitives.makeRandomVertexColors(
-          twgl.primitives.deindexVertices(vertices),
-          {
-            vertsPerColor: vertsPerColor || 1,
-            rand: function(ndx, channel) {
-              if (channel === 0) {
-                last = 128 + Math.random() * 128 | 0;
-              }
-              return channel < 3 ? last : 255;
-            },
-          })
-    );
-}
-
-function createFlattenedFunc(createVerticesFunc: any, vertsPerColor: any) {
-  return function(gl: any, ...args: any[]) {
-    const arrays = createVerticesFunc.apply(null,  Array.prototype.slice.call(arguments, 1));
-    return createFlattenedVertices(gl, arrays, vertsPerColor);
-  };
-}
-
-// These functions make primitives with semi-random vertex colors.
-// This means the primitives can be displayed without needing lighting
-// which is important to keep the samples simple.
-
-
-const flattenedPrimitives = {
-  "createCubeBufferInfo": createFlattenedFunc(twgl.primitives.createCubeVertices, 6),
-  "createSphereBufferInfo": createFlattenedFunc(twgl.primitives.createSphereVertices, 6),
-  "createTruncatedConeBufferInfo": createFlattenedFunc(twgl.primitives.createTruncatedConeVertices, 6),
-  "createXYQuadBufferInfo": createFlattenedFunc(twgl.primitives.createXYQuadVertices, 6),
-};
-
+import vertexShaderSource from "./shaders/cube/cube.vs";
+import fragmentShaderSource from "./shaders/cube/cube.fs";
 
 function main() {
   // Get A WebGL context

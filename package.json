@@ -19,6 +19,7 @@
     "@types/three": "^0.156.0",
     "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.3",
+    "raw-loader": "^4.0.2",
     "ts-loader": "^9.2.6",
     "typescript": "^4.4.4"
   }

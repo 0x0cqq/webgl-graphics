@@ -1,5 +1,5 @@
 import { vec3, mat4 } from "gl-matrix";
-import { rad_to_deg, deg_to_rad } from "./math_utils";
+import { rad_to_deg, deg_to_rad } from "../utils/math_utils";
 
 export enum CameraMovement {
     FORWARD,
@@ -57,8 +57,6 @@ export class Camera {
         let view = mat4.create();
         let center = vec3.create();
         vec3.add(center, this.position, this.front_axis);
-        // console.log('center', center[0].toFixed(2), center[1].toFixed(2), center[2].toFixed(2))
-        // console.log('up_axis', this.up_axis[0].toFixed(2), this.up_axis[1].toFixed(2), this.up_axis[2].toFixed(2));
         mat4.lookAt(view, this.position, center, this.up_axis);
         return view;
     }
@@ -93,12 +91,8 @@ export class Camera {
     process_mouse_movement(x_offset: number, y_offset: number, constrain_pitch: boolean = true) {
         x_offset *= this.mouse_sensitivity;
         y_offset *= this.mouse_sensitivity;
-
-        let new_yaw = this.yaw + x_offset;
         
-        this.yaw = new_yaw;
-
-
+        this.yaw += x_offset;
         this.pitch += y_offset;
 
         if (constrain_pitch) {

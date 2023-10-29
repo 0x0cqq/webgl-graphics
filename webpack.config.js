@@ -21,6 +21,10 @@ module.exports = {
           name: '[name].[ext]',
         },
       },
+      {
+        test: /\.(vs|fs)$/i,
+        use: 'raw-loader',
+      },
     ],
   },
   resolve: {
