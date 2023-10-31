@@ -127,7 +127,7 @@ function main() {
 
     const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues(3.0, 2.0, 0.0), 1, vec3.fromValues(1, 0, 0), true, cubeTexture);
     const cubeObject2 = new Cube(gl, vec3.fromValues(3.0, 0.0, 0.0), vec3.fromValues(0.0, 0.0, 0.0), 0.5, vec3.fromValues(0, 0, 1), false, cubeTexture);
-    const ballObject1 = new Ball(gl, vec3.fromValues(0.0, 3.0, 0.0), vec3.fromValues(0.0, 2.0, 0.0), 1.5, vec3.fromValues(0, 1, 0), true);
+    const ballObject1 = new Ball(gl, vec3.fromValues(0.0, 3.0, 0.0), vec3.fromValues(0.0, 2.0, 1.0), 1.5, vec3.fromValues(0, 1, 1), true);
     const ballObject2 = new Ball(gl, vec3.fromValues(0.0, 0.0, -2.0), vec3.fromValues(0.0, 0.0, 0.0), 1, vec3.fromValues(0, 1, 0), false);
 
     let objects : BasicObject[] = [cubeObject, cubeObject2, ballObject1, ballObject2];

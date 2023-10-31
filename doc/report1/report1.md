@@ -16,7 +16,7 @@
 
 以上流程已经完成，`dist` 文件夹已经在压缩文件中提交。
 
-本实例亦部署于 (https://blog.cqqqwq.com/webgl/)，但不保证与提交内容一致。
+本实例亦部署于 (https://blog.cqqqwq.com/webgl/hw1/)，但不保证与提交内容一致。
 
 ## 交互方式
 

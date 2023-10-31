@@ -10,25 +10,24 @@ import * as twgl from "twgl.js";
 
 interface ObjectData {
     type: string;
-    position: number[];
-    speed: number[];
+    position: number[]; // vec3
+    speed: number[]; // vec3
     size: number;
     isMovable: boolean;
-    color: number[];
+    color: number[]; // vec3
 }
 
 interface BoundaryData {
-    x: number[];
-    y: number[];
-    z: number[];
+    x: number[]; // vec2
+    y: number[]; // vec2
+    z: number[]; // vec2
 }
 
 interface CameraData {
-    position: number[];
+    position: number[]; // vec3
     angle: number[]; // yaw + pitch
     zoom: number;
 }
-
 
 interface ConfigData {
     objects: ObjectData[];
