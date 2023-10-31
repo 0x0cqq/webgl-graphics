@@ -13,7 +13,7 @@ export class Cube extends BasicObject {
     texture: WebGLTexture;
     color: vec3;
     size: number;
-    constructor(gl: WebGL2RenderingContext, position: vec3, speed: vec3, size: number, texture: WebGLTexture | null, color: vec3 = vec3.fromValues(1, 1, 1)) {
+    constructor(gl: WebGL2RenderingContext, position: vec3, speed: vec3, size: number, color: vec3 = vec3.fromValues(1, 1, 1), texture: WebGLTexture | null = null) {
         super(gl, vertexShaderSource, fragmentShaderSource, position, speed);
         this.size = size;
         const vertices = twgl.primitives.createCubeVertices(size);

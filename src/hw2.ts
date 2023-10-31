@@ -118,8 +118,8 @@ function main() {
     });
     
 
-    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues(3.0, 2.0, 0.0), 1, cubeTexture, vec3.fromValues(1, 0, 0));
-    const cubeObject2 = new Cube(gl, vec3.fromValues(0.0, 3.0, 0.0), vec3.fromValues(0.0, 2.0, 0.0), 1.5, cubeTexture, vec3.fromValues(0, 1, 0));
+    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues(3.0, 2.0, 0.0), 1, vec3.fromValues(1, 0, 0), cubeTexture);
+    const cubeObject2 = new Cube(gl, vec3.fromValues(0.0, 3.0, 0.0), vec3.fromValues(0.0, 2.0, 0.0), 1.5, vec3.fromValues(0, 1, 0), cubeTexture);
 
     const objects = [skyboxObject, cubeObject, cubeObject2];
     

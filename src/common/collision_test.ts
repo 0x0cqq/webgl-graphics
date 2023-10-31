@@ -18,6 +18,14 @@ export class CollisionTest {
         this.output_function = output_function;
     }
 
+    set_boundary(boundaries: vec2[]): void {
+        this.boundaries = boundaries;
+    }
+
+    clearObjects(): void {
+        this.objects = [];
+    }
+
     addObject(object: BasicObject): void {
         this.objects.push(object);
     }

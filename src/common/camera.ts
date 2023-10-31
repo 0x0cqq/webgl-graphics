@@ -55,6 +55,17 @@ export class Camera {
         this.update_camera_vectors();
     }
 
+    set_position(position: vec3) {
+        this.position = position;
+        this.update_camera_vectors();
+    }
+
+    set_yaw_pitch(yaw: number, pitch: number) {
+        this.yaw = yaw;
+        this.pitch = pitch;
+        this.update_camera_vectors();
+    }
+
     get_position_string(): string {
         return `(${this.position[0].toFixed(2)}, ${this.position[1].toFixed(2)}, ${this.position[2].toFixed(2)})`
     }
