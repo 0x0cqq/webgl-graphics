@@ -8,6 +8,9 @@ import { vec2, vec3, vec4 } from "gl-matrix";
 export abstract class BasicObject implements DrawObject {
     position: vec3 = vec3.create();
     speed: vec3 = vec3.create();
+    color: vec3;
+    size: number;
+
 
     enableCollision: boolean = true;
     enableMove: boolean = true;
@@ -15,13 +18,15 @@ export abstract class BasicObject implements DrawObject {
     gl: WebGL2RenderingContext;
     programInfo: twgl.ProgramInfo;
 
-    protected constructor(gl: WebGL2RenderingContext, vertexShaderSource: string, fragmentShaderSource: string, position: vec3 = vec3.create(), speed: vec3 = vec3.create(), enableCollision: boolean = true, enableMove: boolean = true) {
+    protected constructor(gl: WebGL2RenderingContext, vertexShaderSource: string, fragmentShaderSource: string, position: vec3, speed: vec3, color: vec3, size: number, enableCollision: boolean, enableMove: boolean) {
         this.gl = gl;
         this.programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
         this.position = position;
         this.speed = speed;
         this.enableCollision = enableCollision;
         this.enableMove = enableMove;
+        this.color = color;
+        this.size = size;
     }
 
     abstract render(camera: Camera, canvas: HTMLCanvasElement): void;

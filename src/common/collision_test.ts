@@ -42,10 +42,19 @@ export class CollisionTest {
                 if(result[0] && result[1] && result[2]) {
                     const current_time_string = new Date().toLocaleTimeString();
                     this.output_function(`${current_time_string}, object ${i} and ${j} is colliding.`);
-                    // swap speed
-                    const g = this.objects[i].speed;
-                    this.objects[i].speed = this.objects[j].speed;
-                    this.objects[j].speed = g;
+                    // swap speed if both are movable
+                    if(this.objects[i].enableMove && this.objects[j].enableMove) {
+                        const g = this.objects[i].speed;
+                        this.objects[i].speed = this.objects[j].speed;
+                        this.objects[j].speed = g;
+                    } else {
+                        if (this.objects[i].enableMove) {
+                            this.objects[i].speed = vec3.negate(vec3.create(), this.objects[i].speed);
+                        }
+                        if (this.objects[j].enableMove) {
+                            this.objects[j].speed = vec3.negate(vec3.create(), this.objects[j].speed);
+                        }
+                    }
                 }
             }
         }    

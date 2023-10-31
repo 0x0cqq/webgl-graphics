@@ -16,10 +16,16 @@ import { Cube } from './common/objects/cube';
 import { FrameBufferExporter } from './common/frame_buffer';
 import { CollisionTest } from './common/collision_test';
 
+import { ConfigData, ConfigReader } from './common/config';
+import { Ball } from './common/objects/ball';
+import { BasicObject } from './common/objects/basic_object';
+
+
 function main() {
     // Get A WebGL context
     const canvas = document.querySelector("#canvas") as HTMLCanvasElement;
     const gl = canvas.getContext("webgl2") as WebGL2RenderingContext;
+    const config_reader = new ConfigReader(gl);
     // resize canvas to displaying size
     twgl.resizeCanvasToDisplaySize(canvas);
 
@@ -27,6 +33,7 @@ function main() {
         alert("No WebGL2! Please use a newer browser.");
         return;
     }
+
 
     // create a camera
     const camera = new Camera(vec3.fromValues(0.0, 0.0, 15.0));
@@ -118,10 +125,12 @@ function main() {
     });
     
 
-    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues(3.0, 2.0, 0.0), 1, vec3.fromValues(1, 0, 0), cubeTexture);
-    const cubeObject2 = new Cube(gl, vec3.fromValues(0.0, 3.0, 0.0), vec3.fromValues(0.0, 2.0, 0.0), 1.5, vec3.fromValues(0, 1, 0), cubeTexture);
+    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues(3.0, 2.0, 0.0), 1, vec3.fromValues(1, 0, 0), true, cubeTexture);
+    const cubeObject2 = new Cube(gl, vec3.fromValues(3.0, 0.0, 0.0), vec3.fromValues(0.0, 0.0, 0.0), 0.5, vec3.fromValues(0, 0, 1), false, cubeTexture);
+    const ballObject1 = new Ball(gl, vec3.fromValues(0.0, 3.0, 0.0), vec3.fromValues(0.0, 2.0, 0.0), 1.5, vec3.fromValues(0, 1, 0), true);
+    const ballObject2 = new Ball(gl, vec3.fromValues(0.0, 0.0, -2.0), vec3.fromValues(0.0, 0.0, 0.0), 1, vec3.fromValues(0, 1, 0), false);
 
-    const objects = [skyboxObject, cubeObject, cubeObject2];
+    let objects : BasicObject[] = [cubeObject, cubeObject2, ballObject1, ballObject2];
     
     // create a framebuffer
     const myFrameBuffer = twgl.createFramebufferInfo(gl);
@@ -162,6 +171,59 @@ function main() {
 
     myCollisionDetector.addObject(cubeObject);
     myCollisionDetector.addObject(cubeObject2);
+    myCollisionDetector.addObject(ballObject1);
+    myCollisionDetector.addObject(ballObject2);
+
+
+    const config_button = document.querySelector("#load_config") as HTMLButtonElement;
+    const config_file_input = document.querySelector("#config") as HTMLInputElement;
+
+    config_button.addEventListener('click', function (e) {
+        if(config_file_input.files == null) {
+            return;
+        }
+        if(config_file_input.files.length == 0) {
+            alert("Please select a config file");
+            return;
+        }
+        const config_file = config_file_input.files[0];
+        config_reader.load(config_file).then((config_data: ConfigData) => {
+            config_reader.set_camera(config_data.camera, camera);
+            config_reader.set_boundary(config_data.boundary, myCollisionDetector);
+            objects = config_reader.set_objects(config_data.objects, myCollisionDetector);
+            console.log(config_data.objects)
+            myFrameBufferExporter.recreate();
+        });
+    });
+    const x_pos = document.querySelector("#button_x_pos") as HTMLButtonElement;
+    const x_neg = document.querySelector("#button_x_neg") as HTMLButtonElement;
+    const z_pos = document.querySelector("#button_z_pos") as HTMLButtonElement;
+    const z_neg = document.querySelector("#button_z_neg") as HTMLButtonElement;
+
+    x_pos.addEventListener('click', function (e) {
+        camera.set_position(vec3.fromValues(15.0, 0.0, 0.0));
+        camera.set_yaw_pitch(180, 0);
+        fresh_camera_info_string();
+    });
+
+    x_neg.addEventListener('click', function (e) {
+        camera.set_position(vec3.fromValues(-15.0, 0.0, 0.0));
+        camera.set_yaw_pitch(0, 0);
+        fresh_camera_info_string();
+    });
+
+    z_pos.addEventListener('click', function (e) {
+        camera.set_position(vec3.fromValues(0.0, 0.0, 15.0));
+        camera.set_yaw_pitch(-90, 0);
+        fresh_camera_info_string();
+    });
+
+    z_neg.addEventListener('click', function (e) {
+        camera.set_position(vec3.fromValues(0.0, 0.0, -15.0));
+        camera.set_yaw_pitch(90, 0);
+        fresh_camera_info_string();
+    });
+
 
     let last_time = 0;
 
@@ -189,6 +251,9 @@ function main() {
         // detect collision 
         myCollisionDetector.detectCollision();
 
+        // render skybox
+        skyboxObject.render(camera, canvas);
+        
         // Render objects
         for (const object of objects) {
             object.render(camera, canvas);
@@ -197,7 +262,7 @@ function main() {
         // render framebuffer texture to screen
         twgl.bindFramebufferInfo(gl);
         myFrameBufferExporter.render(canvas)
-
+        
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);

@@ -3,36 +3,27 @@ import * as twgl from "twgl.js";
 
 import { Camera } from "../camera";
 
-import vertexShaderSource from "../../shaders/cube/cube.vs";
-import fragmentShaderSource from "../../shaders/cube/cube.fs";
+import vertexShaderSource from "../../shaders/ball/ball.vs";
+import fragmentShaderSource from "../../shaders/ball/ball.fs";
 import { BasicObject } from "./basic_object";
 
-export class Cube extends BasicObject {
-    cubeBuffer: twgl.BufferInfo;
-    cubeVAO: WebGLVertexArrayObject;
-    texture: WebGLTexture;
-    constructor(gl: WebGL2RenderingContext, position: vec3, speed: vec3, size: number, color: vec3 = vec3.fromValues(1, 1, 1), enableMove: boolean = true, texture: WebGLTexture | null = null) {
+export class Ball extends BasicObject {
+    ballBuffer: twgl.BufferInfo;
+    ballVAO: WebGLVertexArrayObject;
+    constructor(gl: WebGL2RenderingContext, position: vec3, speed: vec3, size: number, color: vec3 = vec3.fromValues(1, 1, 1), enableMove: boolean = true) {
         super(gl, vertexShaderSource, fragmentShaderSource, position, speed, color, size, true, enableMove);
-        const vertices = twgl.primitives.createCubeVertices(size);
-        console.log(vertices)
-        this.cubeBuffer = twgl.createBufferInfoFromArrays(gl, vertices);
-        this.cubeVAO = twgl.createVAOFromBufferInfo(gl, this.programInfo, this.cubeBuffer)!;
-        
-        if(texture == null) {
-            const textureOptions = {
-                min: gl.NEAREST,
-                mag: gl.NEAREST,
-                src: [
-                    255, 255, 255, 255,
-                    192, 192, 192, 255,
-                    192, 192, 192, 255,
-                    255, 255, 255, 255,
-                ],
-            };
-            this.texture = twgl.createTexture(gl, textureOptions)
-        } else {
-            this.texture = texture;
+        const vertices = twgl.primitives.createSphereVertices(size / 2, 8, 6);
+        // generate random colors for each vertex
+        let colors = [];
+        for(let i = 0; i < vertices.position.length; i += 3) {
+            const grey = Math.random() * 0.5 + 0.5;
+            colors.push(color[0] * grey, color[1] * grey, color[2] * grey, 1);
         }
+        // transform vertices to typed array
+        vertices.color = new Float32Array(colors);
+        console.log(vertices)
+        this.ballBuffer = twgl.createBufferInfoFromArrays(gl, vertices);
+        this.ballVAO = twgl.createVAOFromBufferInfo(gl, this.programInfo, this.ballBuffer)!;
     }
 
     render(camera: Camera, canvas: HTMLCanvasElement): void {
@@ -44,17 +35,16 @@ export class Cube extends BasicObject {
         const viewMatrix = mat4.multiply(mat4.create(), camera.get_projection_matrix(canvas.width, canvas.height), camera.get_view_matrix());
         gl.depthFunc(gl.LESS);
         gl.useProgram(this.programInfo.program);
-        gl.bindVertexArray(this.cubeVAO);
+        gl.bindVertexArray(this.ballVAO);
 
         const uniforms = {
             u_matrix: viewMatrix,
             u_world_matrix: mat4.fromTranslation(mat4.create(), this.position),
             u_color: vec4.fromValues(this.color[0], this.color[1], this.color[2], 1),
-            u_diffuse: this.texture,
         };
 
         twgl.setUniforms(this.programInfo, uniforms);
-        twgl.drawBufferInfo(gl, this.cubeBuffer);
+        twgl.drawBufferInfo(gl, this.ballBuffer);
     }
 
     getAABBBox(): vec2[] {

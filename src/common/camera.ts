@@ -66,6 +66,11 @@ export class Camera {
         this.update_camera_vectors();
     }
 
+    set_zoom(zoom: number) {
+        this.zoom = zoom;
+        this.update_camera_vectors();
+    }
+
     get_position_string(): string {
         return `(${this.position[0].toFixed(2)}, ${this.position[1].toFixed(2)}, ${this.position[2].toFixed(2)})`
     }

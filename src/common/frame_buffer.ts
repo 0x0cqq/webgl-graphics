@@ -30,6 +30,7 @@ export class FrameBufferExporter {
     quadVAO: WebGLVertexArrayObject;
     quadBufferInfo: twgl.BufferInfo;
     framebufferInfo: twgl.FramebufferInfo;
+    currentType: FrameBufferType = FrameBufferType.Raw;
     constructor(gl: WebGL2RenderingContext, frameBuffer: twgl.FramebufferInfo, type: FrameBufferType = FrameBufferType.Raw) {
         this.gl = gl;
         this.programInfo = twgl.createProgramInfo(gl, [frameBufferToScreenVertex, fragments[type]]);
@@ -38,9 +39,10 @@ export class FrameBufferExporter {
         this.framebufferInfo = frameBuffer;
     }
 
-    recreate(type: FrameBufferType) {
+    recreate(type: FrameBufferType = FrameBufferType.Raw) {
         this.programInfo = twgl.createProgramInfo(this.gl, [frameBufferToScreenVertex, fragments[type]]);
         this.quadVAO = twgl.createVAOFromBufferInfo(this.gl, this.programInfo, this.quadBufferInfo)!;
+        this.currentType = type;
     }
     
     render(canvas: HTMLCanvasElement) {
