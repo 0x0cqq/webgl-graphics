@@ -110,6 +110,7 @@ function main() {
             posz, negz,
         ],
         min: gl.LINEAR_MIPMAP_LINEAR,
+        crossOrigin: ""
     });
     const skyboxObject = new SkyBox(gl, skyboxTexture);
 

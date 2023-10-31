@@ -10,15 +10,13 @@
 
 2. 在项目根目录下运行 `npm install`
 
-3. 在项目根目录下运行 `npm run build`
+3. 在项目根目录下运行 `npm run start`
 
-4. 在浏览器中打开 `/dist/index.html`
+4. 根据命令行提示，在浏览器中打开如 `http://localhost:8080` 的网页
 
 5. 点击 "作业2"
 
-以上流程已经完成，`dist` 文件夹已经在压缩文件中提交。
-
-本实例亦部署于 (https://blog.cqqqwq.com/webgl/hw2/)，但不保证与提交内容一致。
+本实例亦部署于 (https://blog.cqqqwq.com/webgl/hw2.html)，但不保证与提交内容一致。
 
 ## 作业实现
 
