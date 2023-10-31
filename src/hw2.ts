@@ -1,4 +1,4 @@
-import { mat4, vec3, vec4 } from 'gl-matrix';
+import { mat4, vec2, vec3, vec4 } from 'gl-matrix';
 import * as twgl from 'twgl.js';
 import { Camera, CameraMovement } from './common/camera';
 
@@ -14,6 +14,7 @@ import { SkyBox } from './common/objects/skybox';
 import { Cube } from './common/objects/cube';
 
 import { FrameBufferExporter } from './common/frame_buffer';
+import { CollisionTest } from './common/collision_test';
 
 function main() {
     // Get A WebGL context
@@ -96,8 +97,8 @@ function main() {
     });
     
 
-    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), cubeTexture, vec3.fromValues(1, 0, 0));
-    const cubeObject2 = new Cube(gl, vec3.fromValues(0.0, 1.0, 0.0), cubeTexture, vec3.fromValues(0, 1, 0));
+    const cubeObject = new Cube(gl, vec3.fromValues(0.0, 0.0, 0.0), vec3.fromValues(3.0, 2.0, 0.0), 1, cubeTexture, vec3.fromValues(1, 0, 0));
+    const cubeObject2 = new Cube(gl, vec3.fromValues(0.0, 3.0, 0.0), vec3.fromValues(0.0, 2.0, 0.0), 1.5, cubeTexture, vec3.fromValues(0, 1, 0));
 
     const objects = [skyboxObject, cubeObject, cubeObject2];
     
@@ -112,9 +113,28 @@ function main() {
     const myFrameBufferExporter = new FrameBufferExporter(gl, myFrameBuffer);
 
 
+    const boundaries = [
+        vec2.fromValues(-10, 10),
+        vec2.fromValues(-10, 10),
+        vec2.fromValues(-10, 10),
+    ];
+    const myCollisionDetector = new CollisionTest(boundaries);
+
+    myCollisionDetector.addObject(cubeObject);
+    myCollisionDetector.addObject(cubeObject2);
+
+    let last_time = 0;
+
     // Draw the scene.
     function render(time: number) {
         time *= 0.001;  // convert to seconds
+
+        if(last_time != 0) {
+            const deltaTime = time - last_time;
+            // update cube position
+            myCollisionDetector.updatePosition(deltaTime);
+        }
+        last_time = time;
 
         // bind to framebuffer
         twgl.bindFramebufferInfo(gl, myFrameBuffer);
@@ -126,9 +146,8 @@ function main() {
         // turn on culling & depth test
         gl.enable(gl.DEPTH_TEST);
 
-        // update cube position
-        cubeObject.setPosition(vec3.fromValues(Math.cos(time) * 2.0, Math.sin(time) * 2.0, 0.0));
-
+        // detect collision 
+        myCollisionDetector.detectCollision();
 
         // Render objects
         for (const object of objects) {

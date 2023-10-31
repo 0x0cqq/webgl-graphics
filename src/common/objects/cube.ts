@@ -1,4 +1,4 @@
-import { mat4, vec3, vec4 } from "gl-matrix";
+import { mat4, vec2, vec3, vec4 } from "gl-matrix";
 import * as twgl from "twgl.js";
 
 import { Camera } from "../camera";
@@ -8,16 +8,16 @@ import fragmentShaderSource from "../../shaders/cube/cube.fs";
 import { BasicObject } from "./basic_object";
 
 export class Cube extends BasicObject {
-    position: vec3;
     cubeBuffer: twgl.BufferInfo;
     cubeVAO: WebGLVertexArrayObject;
     texture: WebGLTexture;
     color: vec3;
-    constructor(gl: WebGL2RenderingContext, position: vec3, texture: WebGLTexture | null, color: vec3 = vec3.fromValues(1, 1, 1)) {
+    size: number;
+    constructor(gl: WebGL2RenderingContext, position: vec3, speed: vec3, size: number, texture: WebGLTexture | null, color: vec3 = vec3.fromValues(1, 1, 1)) {
         let last = 0;
-        super(gl, vertexShaderSource, fragmentShaderSource);
-        this.position = position;
-        const vertices = twgl.primitives.createCubeVertices(1);
+        super(gl, vertexShaderSource, fragmentShaderSource, position, speed);
+        this.size = size;
+        const vertices = twgl.primitives.createCubeVertices(size);
         console.log(vertices)
         this.cubeBuffer = twgl.createBufferInfoFromArrays(gl, vertices);
         this.cubeVAO = twgl.createVAOFromBufferInfo(gl, this.programInfo, this.cubeBuffer)!;
@@ -37,10 +37,6 @@ export class Cube extends BasicObject {
             this.texture = texture;
         }
         this.color = color;
-    }
-
-    setPosition(position: vec3) {
-        this.position = position;
     }
 
     render(camera: Camera, canvas: HTMLCanvasElement): void {
@@ -64,5 +60,14 @@ export class Cube extends BasicObject {
         twgl.setUniforms(this.programInfo, uniforms);
 
         twgl.drawBufferInfo(gl, this.cubeBuffer);
+    }
+
+    getAABBBox(): vec2[] {
+        const halfSize = this.size / 2;
+        return [
+            vec2.fromValues(this.position[0] - halfSize, this.position[0] + halfSize),
+            vec2.fromValues(this.position[1] - halfSize, this.position[1] + halfSize),
+            vec2.fromValues(this.position[2] - halfSize, this.position[2] + halfSize),
+        ];   
     }
 }
