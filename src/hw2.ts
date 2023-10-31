@@ -29,11 +29,12 @@ function main() {
     }
 
     // create a camera
-    const camera = new Camera(vec3.fromValues(0.0, 0.0, 10.0));
+    const camera = new Camera(vec3.fromValues(0.0, 0.0, 15.0));
 
     // catch scroll event to zoom in/out
     document.addEventListener('wheel', function (e) {
         camera.process_mouse_scroll(e.deltaY > 0 ? 1 : -1);
+        fresh_camera_info_string();
     });
     // catch key event to move camera
     document.addEventListener('keydown', function (e) {
@@ -50,28 +51,48 @@ function main() {
             case 'd':
                 camera.process_keyboard(CameraMovement.RIGHT, 0.1);
                 break;
+            case 'q':
+                camera.process_keyboard(CameraMovement.UP, 0.1);
+                break;
+            case 'e':
+                camera.process_keyboard(CameraMovement.DOWN, 0.1);
+                break;
         }
+        fresh_camera_info_string();
     });
     // catch mouse down/up event to rotate camera
     let mouse_down = false, last_x = 0, last_y = 0;
-    document.addEventListener('mousedown', function (e) {
+    canvas.addEventListener('mousedown', function (e) {
         mouse_down = true;
         last_x = e.clientX;
         last_y = e.clientY;
     });
-    document.addEventListener('mousemove', function (e) {
+    canvas.addEventListener('mousemove', function (e) {
         if (!mouse_down) return;
         camera.process_mouse_movement(e.clientX - last_x, e.clientY - last_y);
+        fresh_camera_info_string();
         last_x = e.clientX;
         last_y = e.clientY;
     });
-    document.addEventListener('mouseup', function (e) {
+    canvas.addEventListener('mouseup', function (e) {
+        mouse_down = false;
+    });
+    canvas.addEventListener('mouseleave', function (e) {
         mouse_down = false;
     });
 
+    function fresh_camera_info_string() {
+        const position_element = document.querySelector("#camera_pos") as HTMLSpanElement;
+        const angle_element = document.querySelector("#camera_angle") as HTMLSpanElement;
+        const zoom_element = document.querySelector("#camera_zoom") as HTMLSpanElement;
+        position_element.innerText = camera.get_position_string();
+        angle_element.innerText = camera.get_angles_string();
+        zoom_element.innerText = camera.get_zoom_string();
+    }
+
+    fresh_camera_info_string();
+
     twgl.setDefaults({ attribPrefix: "a_" });
-
-
 
     // skybox texture
     const skyboxTexture = twgl.createTexture(gl, {
@@ -102,6 +123,7 @@ function main() {
 
     const objects = [skyboxObject, cubeObject, cubeObject2];
     
+    // create a framebuffer
     const myFrameBuffer = twgl.createFramebufferInfo(gl);
     twgl.bindFramebufferInfo(gl, null);
     let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
@@ -110,15 +132,33 @@ function main() {
     } else{
       console.log("Success creating framebuffer");
     }
+    
     const myFrameBufferExporter = new FrameBufferExporter(gl, myFrameBuffer);
 
+    // find the filter element
+    const filter = document.querySelector("#filter") as HTMLSelectElement;
 
+    // create a listener to change the filter in the framebuffer
+    filter.addEventListener('change', function (e: Event) {
+        let index = this.options.selectedIndex;
+        let value = this.options[index].value;
+        console.log(value);
+        myFrameBufferExporter.recreate(parseInt(value));
+    });
+
+
+    // create a collision detector
     const boundaries = [
-        vec2.fromValues(-10, 10),
-        vec2.fromValues(-10, 10),
-        vec2.fromValues(-10, 10),
+        vec2.fromValues(-5, 5),
+        vec2.fromValues(-5, 5),
+        vec2.fromValues(-5, 5),
     ];
-    const myCollisionDetector = new CollisionTest(boundaries);
+    const collision_output = document.querySelector("#collision_output") as HTMLTextAreaElement;
+    function addCollisionOutput(s: string) {
+        collision_output.value = s + '\n' + collision_output.value;
+    }
+
+    const myCollisionDetector = new CollisionTest(boundaries, addCollisionOutput);
 
     myCollisionDetector.addObject(cubeObject);
     myCollisionDetector.addObject(cubeObject2);

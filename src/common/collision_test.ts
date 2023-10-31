@@ -11,8 +11,11 @@ export class CollisionTest {
 
     boundaries: vec2[] = [];
 
-    constructor(boundaries: vec2[]) {
+    output_function: (s: string) => void;
+
+    constructor(boundaries: vec2[], output_function: (s: string) => void = console.log) {
         this.boundaries = boundaries;
+        this.output_function = output_function;
     }
 
     addObject(object: BasicObject): void {
@@ -24,9 +27,13 @@ export class CollisionTest {
         // collide between objects
         for(let i = 0; i < len; i++) {
             for(let j = i + 1; j < len; j++) {
+                if(!this.objects[i].enableCollision || !this.objects[j].enableCollision) {
+                    continue;
+                }
                 const result = isColliding(this.objects[i], this.objects[j]);
                 if(result[0] && result[1] && result[2]) {
-                    console.log('object', i, 'and', j, 'is colliding');
+                    const current_time_string = new Date().toLocaleTimeString();
+                    this.output_function(`${current_time_string}, object ${i} and ${j} is colliding.`);
                     // swap speed
                     const g = this.objects[i].speed;
                     this.objects[i].speed = this.objects[j].speed;
@@ -34,15 +41,16 @@ export class CollisionTest {
                 }
             }
         }    
-        // collide with boundaries
+        // collide with boundaries, which is easy
         for(let i = 0; i < len; i++) {
             const aabb = this.objects[i].getAABBBox();
             for(let j = 0; j < 3; j++) {
+                const current_time_string = new Date().toLocaleTimeString();
                 if(aabb[j][0] < this.boundaries[j][0]) {
-                    console.log('object', i, 'is colliding with boundary', j, 'min');
+                    this.output_function(`${current_time_string}, object ${i} is colliding with boundary dim ${j} min`);
                     this.objects[i].speed[j] = Math.abs(this.objects[i].speed[j]);
                 } else if(aabb[j][1] > this.boundaries[j][1]) {
-                    console.log('object', i, 'is colliding with boundary', j, 'max');
+                    this.output_function(`${current_time_string}, object ${i} is colliding with boundary dim ${j} max`);
                     this.objects[i].speed[j] = -Math.abs(this.objects[i].speed[j]);
                 }
             }

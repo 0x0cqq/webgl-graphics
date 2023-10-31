@@ -5,7 +5,9 @@ export enum CameraMovement {
     FORWARD,
     BACKWARD,
     LEFT,
-    RIGHT
+    RIGHT,
+    UP,
+    DOWN,
 };
 
 const YAW = -90.0;
@@ -53,6 +55,19 @@ export class Camera {
         this.update_camera_vectors();
     }
 
+    get_position_string(): string {
+        return `(${this.position[0].toFixed(2)}, ${this.position[1].toFixed(2)}, ${this.position[2].toFixed(2)})`
+    }
+
+    get_angles_string(): string {
+        return `(yaw: ${this.yaw.toFixed(2) }, pitch: ${this.pitch.toFixed(2)})`
+    }
+    
+    get_zoom_string(): string {
+        return `zoom: ${this.zoom.toFixed(2)}`
+    }
+
+
     get_view_matrix(): mat4 {
         let view = mat4.create();
         let center = vec3.create();
@@ -85,6 +100,12 @@ export class Camera {
         }
         if (direction == CameraMovement.RIGHT) {
             vec3.scaleAndAdd(this.position, this.position, this.right_axis, velocity);
+        }
+        if (direction == CameraMovement.UP) {
+            vec3.scaleAndAdd(this.position, this.position, this.up_axis, velocity);
+        }
+        if (direction == CameraMovement.DOWN) {
+            vec3.scaleAndAdd(this.position, this.position, this.up_axis, -velocity);
         }
     }
 

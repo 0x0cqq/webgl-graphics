@@ -1,7 +1,28 @@
 import frameBufferToScreenVertex from '../shaders/buffer/framebuffer.vs'
-import frameBufferToScreenFragment from '../shaders/buffer/framebuffer.fs'
+import frameBufferToScreenFragmentRaw from '../shaders/buffer/framebuffer_raw.fs'
+// Grey, Reverse, Guass, Vignette
+import frameBufferToScreenFragmentGrey from '../shaders/buffer/framebuffer_grey.fs'
+import frameBufferToScreenFragmentReverse from '../shaders/buffer/framebuffer_reverse.fs'
+import frameBufferToScreenFragmentGuass from '../shaders/buffer/framebuffer_guass.fs'
+import frameBufferToScreenFragmentVignette from '../shaders/buffer/framebuffer_vignette.fs'
 
 import * as twgl from 'twgl.js'
+
+export enum FrameBufferType {
+    Raw,
+    Grey,
+    Reverse,
+    Guass,
+    Vignette,
+}
+
+const fragments = [
+    frameBufferToScreenFragmentRaw,
+    frameBufferToScreenFragmentGrey,
+    frameBufferToScreenFragmentReverse,
+    frameBufferToScreenFragmentGuass,
+    frameBufferToScreenFragmentVignette,
+]
 
 export class FrameBufferExporter {
     programInfo: twgl.ProgramInfo;
@@ -9,13 +30,19 @@ export class FrameBufferExporter {
     quadVAO: WebGLVertexArrayObject;
     quadBufferInfo: twgl.BufferInfo;
     framebufferInfo: twgl.FramebufferInfo;
-    constructor(gl: WebGL2RenderingContext, frameBuffer: twgl.FramebufferInfo) {
+    constructor(gl: WebGL2RenderingContext, frameBuffer: twgl.FramebufferInfo, type: FrameBufferType = FrameBufferType.Raw) {
         this.gl = gl;
-        this.programInfo = twgl.createProgramInfo(gl, [frameBufferToScreenVertex, frameBufferToScreenFragment]);
+        this.programInfo = twgl.createProgramInfo(gl, [frameBufferToScreenVertex, fragments[type]]);
         this.quadBufferInfo = twgl.primitives.createXYQuadBufferInfo(gl);
         this.quadVAO = twgl.createVAOFromBufferInfo(gl, this.programInfo, this.quadBufferInfo)!;
         this.framebufferInfo = frameBuffer;
     }
+
+    recreate(type: FrameBufferType) {
+        this.programInfo = twgl.createProgramInfo(this.gl, [frameBufferToScreenVertex, fragments[type]]);
+        this.quadVAO = twgl.createVAOFromBufferInfo(this.gl, this.programInfo, this.quadBufferInfo)!;
+    }
+    
     render(canvas: HTMLCanvasElement) {
         // Tell WebGL how to convert from clip space to pixels
         twgl.resizeCanvasToDisplaySize(canvas);

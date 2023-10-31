@@ -9,14 +9,19 @@ export abstract class BasicObject implements DrawObject {
     position: vec3 = vec3.create();
     speed: vec3 = vec3.create();
 
+    enableCollision: boolean = true;
+    enableMove: boolean = true;
+
     gl: WebGL2RenderingContext;
     programInfo: twgl.ProgramInfo;
 
-    protected constructor(gl: WebGL2RenderingContext, vertexShaderSource: string, fragmentShaderSource: string, position: vec3 = vec3.create(), speed: vec3 = vec3.create()) {
+    protected constructor(gl: WebGL2RenderingContext, vertexShaderSource: string, fragmentShaderSource: string, position: vec3 = vec3.create(), speed: vec3 = vec3.create(), enableCollision: boolean = true, enableMove: boolean = true) {
         this.gl = gl;
         this.programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
         this.position = position;
         this.speed = speed;
+        this.enableCollision = enableCollision;
+        this.enableMove = enableMove;
     }
 
     abstract render(camera: Camera, canvas: HTMLCanvasElement): void;
@@ -26,6 +31,9 @@ export abstract class BasicObject implements DrawObject {
     abstract getAABBBox(): vec2[];
 
     updatePosition(deltaTime: number) {
+        if (!this.enableMove) {
+            return;
+        }
         vec3.scaleAndAdd(this.position, this.position, this.speed, deltaTime);
     }
 }

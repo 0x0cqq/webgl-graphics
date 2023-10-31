@@ -7,9 +7,50 @@
         <h1>作业2: 场景绘制</h1>
         <a href="index.html"><h2>返回主页</h2></a>
 
-        <div style="width: 100%;">
-            <canvas id="canvas" width="400px" height="400px" style="display:block; border:1px solid #000000; margin: 0 auto;">
-            </canvas>
+        <!-- 横向排布两个盒子,分别是画布和信息栏 -->
+        <div style="width: 100%; display: flex; justify-content: space-between;">
+            <div style="width: 60%;">
+                <canvas id="canvas" style="height: 60vh; width: 60vh;  display:block; border:1px solid #000000; margin: 0 auto;">
+                </canvas>
+            </div>
+            <div style="width: 40%; display: block;">
+                <!-- 相机位置 -->
+                <div>
+                    <ul>
+                        <li>位置: <span id="camera_pos"> xxxx </span> </li>
+                        <li>角度: <span id="camera_angle"> yyyy </span></li>
+                        <li>视角: <span id="camera_zoom"> zzzz </span></li>
+                    </ul>
+                </div>
+                <!-- 使用说明 -->
+                <div>
+                    <p>视角漫游使用说明: </p>
+                    <ol>
+                        <li> 使用键盘 WASD 控制相机平面上的移动, QE 控制垂直移动 </li>
+                        <li> 在画板内拖动改变欧拉角 </li>
+                        <li> 使用鼠标滚轮控制相机视角大小 </li>
+                    </ol>
+                </div>
+                <!-- 碰撞检测日志 -->
+                <div>
+                    <label for="collision_output">碰撞检测日志</label>
+                    <textarea id="collision_output" name="collision" type="text" style="width: 90%; height: 60px; margin: 10px auto; resize: none;" disabled="true">
+                    </textarea>
+                </div>
+                <!-- 滤镜选择 -->
+                <div>
+                    <label for="filter">滤镜选择</label>
+                    <br/>
+                    <select id="filter" name="filter" style="width: 50%; margin: 10px auto;">
+                        <option value="0">无</option>
+                        <option value="1">灰度</option>
+                        <option value="2">反色</option>
+                        <option value="3">模糊</option>
+                        <option value="4">晕影</option>
+                    </select>
+                </div>
+            </div>
         </div>
+
     </body>
 </html>

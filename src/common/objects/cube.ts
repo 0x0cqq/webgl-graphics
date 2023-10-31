@@ -14,7 +14,6 @@ export class Cube extends BasicObject {
     color: vec3;
     size: number;
     constructor(gl: WebGL2RenderingContext, position: vec3, speed: vec3, size: number, texture: WebGLTexture | null, color: vec3 = vec3.fromValues(1, 1, 1)) {
-        let last = 0;
         super(gl, vertexShaderSource, fragmentShaderSource, position, speed);
         this.size = size;
         const vertices = twgl.primitives.createCubeVertices(size);
@@ -27,8 +26,8 @@ export class Cube extends BasicObject {
                 mag: gl.NEAREST,
                 src: [
                     255, 255, 255, 255,
-                    255, 255, 255, 255,
-                    255, 255, 255, 255,
+                    192, 192, 192, 255,
+                    192, 192, 192, 255,
                     255, 255, 255, 255,
                 ],
             };
