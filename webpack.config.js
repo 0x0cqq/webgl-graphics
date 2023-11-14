@@ -6,6 +6,7 @@ module.exports = {
     main: './src/index.ts',
     hw1: './src/hw1.ts',
     hw2: './src/hw2.ts',
+    hw3: './src/hw3.ts',
   },
   module: {
     rules: [
@@ -49,6 +50,11 @@ module.exports = {
         template: './src/hw2.html',
         filename: 'hw2.html',
         chunks: ['hw2']
+    }),
+    new HtmlWebpackPlugin({
+        template: './src/hw3.html',
+        filename: 'hw3.html',
+        chunks: ['hw3']
     }),
   ]
 };
