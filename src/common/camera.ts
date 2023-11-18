@@ -84,6 +84,10 @@ export class Camera {
     }
 
 
+    get_eye_position(): vec3 {
+        return this.position;
+    }
+
     get_view_matrix(): mat4 {
         let view = mat4.create();
         let center = vec3.create();
@@ -92,13 +96,13 @@ export class Camera {
         return view;
     }
 
-    get_projection_matrix(width: number, height: number): mat4 {
+    get_projection_matrix(width: number, height: number, near: number = 1, far: number = 100): mat4 {
         const projectionMatrix = mat4.perspective(
             mat4.create(),
             deg_to_rad(this.zoom),
             width / height,
-            1,
-            2000.0
+            near,
+            far,
         );
         return projectionMatrix;
     }

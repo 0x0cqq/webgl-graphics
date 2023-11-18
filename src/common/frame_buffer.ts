@@ -31,6 +31,7 @@ export class FrameBufferExporter {
     quadBufferInfo: twgl.BufferInfo;
     framebufferInfo: twgl.FramebufferInfo;
     currentType: FrameBufferType = FrameBufferType.Raw;
+
     constructor(gl: WebGL2RenderingContext, frameBuffer: twgl.FramebufferInfo, type: FrameBufferType = FrameBufferType.Raw) {
         this.gl = gl;
         this.programInfo = twgl.createProgramInfo(gl, [frameBufferToScreenVertex, fragments[type]]);
@@ -44,13 +45,13 @@ export class FrameBufferExporter {
         this.quadVAO = twgl.createVAOFromBufferInfo(this.gl, this.programInfo, this.quadBufferInfo)!;
         this.currentType = type;
     }
-    
+
     render(canvas: HTMLCanvasElement) {
         // Tell WebGL how to convert from clip space to pixels
         twgl.resizeCanvasToDisplaySize(canvas);
         this.gl.viewport(0, 0, canvas.width, canvas.height);
-        
-        this.gl.clearColor(0, 0, 0, 0);
+
+        this.gl.clearColor(0, 0, 0, 1.0);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
         this.gl.disable(this.gl.DEPTH_TEST);
