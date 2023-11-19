@@ -13,11 +13,11 @@ import chromeImage from './assets/chrome.png';
 import { Accumlator, AccumlatorExporter } from './common/accumlator';
 
 
-function addRandomColor(verticesArray: { [key: string]: twgl.primitives.TypedArray }): void {
+function addRandomColor(verticesArray: { [key: string]: twgl.primitives.TypedArray }, alpha: number = 1): void {
     const numElements = verticesArray.position.length / 3;
     const colors = twgl.primitives.createAugmentedTypedArray(4, numElements);
     for (let i = 0; i < numElements; ++i) {
-        colors.push(1, 1, 1, 1);
+        colors.push(1, 1, 1, alpha);
     }
     verticesArray.color = colors;
 }
@@ -29,18 +29,18 @@ function createVerticesFromMesh(ca: THREE.Mesh, gl: WebGL2RenderingContext) {
         texcoord: twgl.primitives.createAugmentedTypedArray(2, ca.geometry.attributes.uv.array.length / 2),
     };
 
-    for(let i = 0; i < ca.geometry.attributes.position.array.length; i += 3) {
-        vertices.position.push(ca.geometry.attributes.position.array[i], ca.geometry.attributes.position.array[i+1], ca.geometry.attributes.position.array[i+2]);
+    for (let i = 0; i < ca.geometry.attributes.position.array.length; i += 3) {
+        vertices.position.push(ca.geometry.attributes.position.array[i], ca.geometry.attributes.position.array[i + 1], ca.geometry.attributes.position.array[i + 2]);
     }
-    for(let i = 0; i < ca.geometry.attributes.normal.array.length; i += 3) {
-        vertices.normal.push(ca.geometry.attributes.normal.array[i], ca.geometry.attributes.normal.array[i+1], ca.geometry.attributes.normal.array[i+2]);
+    for (let i = 0; i < ca.geometry.attributes.normal.array.length; i += 3) {
+        vertices.normal.push(ca.geometry.attributes.normal.array[i], ca.geometry.attributes.normal.array[i + 1], ca.geometry.attributes.normal.array[i + 2]);
     }
-    for(let i = 0; i < ca.geometry.attributes.uv.array.length; i += 2) {
-        vertices.texcoord.push(ca.geometry.attributes.uv.array[i], ca.geometry.attributes.uv.array[i+1]);
+    for (let i = 0; i < ca.geometry.attributes.uv.array.length; i += 2) {
+        vertices.texcoord.push(ca.geometry.attributes.uv.array[i], ca.geometry.attributes.uv.array[i + 1]);
     }
 
     console.log(vertices);
-    
+
     return vertices;
 }
 
@@ -50,9 +50,9 @@ async function createTextureFromMesh(ca: THREE.Mesh, gl: WebGL2RenderingContext)
     console.log(material);
     // transform to webgl texture
     const image = new Image();
-    
+
     // wait until material.map == null || material.map!.image == null || material.map!.image.src == null
-    while(material.map == null || material.map!.image == null || material.map!.image.src == null) {
+    while (material.map == null || material.map!.image == null || material.map!.image.src == null) {
         await new Promise<void>((resolve) => {
             setTimeout(() => {
                 resolve();
@@ -93,9 +93,9 @@ function createImmutableImageTexture(gl: WebGL2RenderingContext, image: HTMLImag
     return texture;
 }
 
-function create_buffer_vao_colored(vertices: { [key: string]: twgl.primitives.TypedArray }, gl: WebGL2RenderingContext, programInfo: twgl.ProgramInfo): { buffer: twgl.BufferInfo, vao: WebGLVertexArrayObject } {
+function create_buffer_vao_colored(vertices: { [key: string]: twgl.primitives.TypedArray }, gl: WebGL2RenderingContext, programInfo: twgl.ProgramInfo, alpha: number = 1): { buffer: twgl.BufferInfo, vao: WebGLVertexArrayObject } {
     // create a cube
-    addRandomColor(vertices);
+    addRandomColor(vertices, alpha);
     // create a cube buffer
     const buffer = twgl.createBufferInfoFromArrays(gl, vertices);
     // create a cube VAO
@@ -128,18 +128,16 @@ async function main() {
     twgl.setDefaults({ attribPrefix: "a_" });
 
 
-    const camera = new Camera(vec3.fromValues(0.0, 0.0, 10.0));
+    const camera = new Camera(vec3.fromValues(0.0, 8.0, 30.0));
     camera.setup_interaction(canvas);
-    const lightPosition = vec3.fromValues(1, 1, 2);
+    const lightPosition = vec3.fromValues(0, 0, 10);
 
     // accumlator and exporter
     const accumlator = new Accumlator(gl);
     const accum_exporter = new AccumlatorExporter(gl, accumlator);
 
     // color, depth and stencil
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.enable(gl.BLEND)
-    gl.depthMask(false);
+    gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
 
@@ -153,13 +151,11 @@ async function main() {
     });
 
     console.log(image.width, image.height)
-    const image_texture = createImmutableImageTexture(gl, image);
+    const image_texture_cube = createImmutableImageTexture(gl, image);
 
-    const cubeVertices = twgl.primitives.createCubeVertices(2);
-    const { buffer: cubeBuffer, vao: cubeVAO } = create_buffer_vao_colored(cubeVertices, gl, accumlator.programInfo);
+    const cubeVertices = twgl.primitives.createTruncatedConeVertices(4, 2, 4, 100, 100);
+    const { buffer: cubeBuffer, vao: cubeVAO } = create_buffer_vao_colored(cubeVertices, gl, accumlator.oitProgramInfo, 0.5);
 
-
-    // const cyborgVertices = await load_obj_to_twgl('./models/nanosuit/nanosuit.obj', './models/nanosuit/nanosuit.mtl');
 
     // load with three.js
     const loader = new OBJLoader();
@@ -176,10 +172,10 @@ async function main() {
     const imageTextures: WebGLTexture[] = [];
 
     const length = cyborg.children.length;
-    for(let i = 0; i < length; i++) {
+    for (let i = 0; i < length; i++) {
         const ca = cyborg.children[i] as THREE.Mesh;
         const vertices = createVerticesFromMesh(ca, gl);
-        const { buffer, vao } = create_buffer_vao_colored(vertices, gl, accumlator.programInfo);
+        const { buffer, vao } = create_buffer_vao_colored(vertices, gl, accumlator.oitProgramInfo);
         buffers.push(buffer);
         vaos.push(vao);
 
@@ -193,34 +189,49 @@ async function main() {
         // resize canvas to displaying size
         twgl.resizeCanvasToDisplaySize(canvas);
 
-        accumlator.render(canvas, camera, lightPosition, (programInfo: twgl.ProgramInfo) => {
-            const modelMatrix = mat4.create();
-            // mat4.rotateX(modelMatrix, modelMatrix, time);
-            // mat4.rotateY(modelMatrix, modelMatrix, time);
+        accumlator.render(canvas, camera, lightPosition,
+            // normal render
+            (programInfo: twgl.ProgramInfo) => {
+                const modelMatrix = mat4.create();
+                // mat4.rotateX(modelMatrix, modelMatrix, time);
+                mat4.rotateY(modelMatrix, modelMatrix, time);
 
-            const uniforms = {
-                u_model_matrix: modelMatrix,
-            };
-
-            twgl.setUniforms(programInfo, uniforms);
-
-            // gl.bindVertexArray(cubeVAO);
-            // twgl.drawBufferInfo(gl, cubeBuffer);
-            
-            for(let i = 0; i < length; i++) {
-                const this_uniform = {
-                    u_texture: imageTextures[i], 
+                const uniforms = {
+                    u_model_matrix: modelMatrix,
                 };
-                twgl.setUniforms(programInfo, this_uniform);
-                gl.bindVertexArray(vaos[i]);
-                twgl.drawBufferInfo(gl, buffers[i]);
-            }
-        });
 
+                twgl.setUniforms(programInfo, uniforms);
 
-        // render buffer texture to screen
-        // bind default frame buffer
-        twgl.bindFramebufferInfo(gl, null);
+                for (let i = 0; i < length; i++) {
+                    const this_uniform = {
+                        u_texture: imageTextures[i],
+                    };
+                    twgl.setUniforms(programInfo, this_uniform);
+                    gl.bindVertexArray(vaos[i]);
+                    twgl.drawBufferInfo(gl, buffers[i]);
+                }
+            },
+            // oit render
+            (programInfo: twgl.ProgramInfo) => {
+                const modelMatrix = mat4.create();
+                // move the cube
+                mat4.translate(modelMatrix, modelMatrix, vec3.fromValues(0.0, 0.0, 0.0));
+                // rotate the cube
+                mat4.rotateX(modelMatrix, modelMatrix, time);
+                mat4.rotateY(modelMatrix, modelMatrix, time);
+
+                const uniforms = {
+                    u_model_matrix: modelMatrix,
+                    u_texture: image_texture_cube,
+                };
+
+                twgl.setUniforms(programInfo, uniforms);
+
+                gl.bindVertexArray(cubeVAO);
+                twgl.drawBufferInfo(gl, cubeBuffer);
+
+            });
+
         // render frame buffer to screen
         accum_exporter.render(canvas);
 

@@ -13,7 +13,7 @@ import posz from "./assets/posz.jpg";
 import { SkyBox } from './common/objects/skybox';
 import { Cube } from './common/objects/cube';
 
-import { FrameBufferExporter } from './common/frame_buffer';
+import { FramebufferExporter } from './common/frame_buffer';
 import { CollisionTest } from './common/collision_test';
 
 import { ConfigData, ConfigReader } from './common/config';
@@ -143,7 +143,7 @@ function main() {
         console.log("Success creating framebuffer");
     }
 
-    const myFrameBufferExporter = new FrameBufferExporter(gl, myFrameBuffer);
+    const myFrameBufferExporter = new FramebufferExporter(gl, myFrameBuffer);
 
     // find the filter element
     const filter = document.querySelector("#filter") as HTMLSelectElement;

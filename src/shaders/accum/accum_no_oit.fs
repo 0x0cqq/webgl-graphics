@@ -18,12 +18,7 @@ in vec2 v_texcoord;
 in vec3 v_normal;
 flat in vec4 v_color;
 
-layout(location=0) out vec4 accumColor;
-layout(location=1) out float accumAlpha;
-
-float weight(float z, float a) {
-    return clamp(pow(min(1.0, a * 10.0) + 0.01, 3.0) * 1e8 * pow(1.0 - z * 0.9, 3.0), 1e-2, 3e3);
-}
+out vec4 fragColor;
 
 void main() {
     vec3 position = v_position.xyz;
@@ -40,9 +35,5 @@ void main() {
     float ambient = 0.2;
     float specular = pow(max(dot(reflect_direction, eye_direction), 0.0), 20.0);
 
-    vec4 color = vec4((ambient + diffuse + specular) * base_color.rgb, v_color.a);
-    color.rgb *= color.a;
-    float w = weight(gl_FragCoord.z, color.a);
-    accumColor = vec4(color.rgb * w, color.a);
-    accumAlpha = color.a * w;
+    fragColor = vec4((ambient + diffuse + specular) * base_color.rgb, v_color.a);
 }

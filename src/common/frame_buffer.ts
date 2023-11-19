@@ -24,7 +24,7 @@ const fragments = [
     frameBufferToScreenFragmentVignette,
 ]
 
-export class FrameBufferExporter {
+export class FramebufferExporter {
     programInfo: twgl.ProgramInfo;
     gl: WebGL2RenderingContext;
     quadVAO: WebGLVertexArrayObject;
@@ -46,15 +46,18 @@ export class FrameBufferExporter {
         this.currentType = type;
     }
 
-    render(canvas: HTMLCanvasElement) {
+    render(canvas: HTMLCanvasElement, standalone: boolean = true) {
         // Tell WebGL how to convert from clip space to pixels
-        twgl.resizeCanvasToDisplaySize(canvas);
-        this.gl.viewport(0, 0, canvas.width, canvas.height);
-
-        this.gl.clearColor(0, 0, 0, 1.0);
-        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        
+        if (standalone) {
+            twgl.resizeCanvasToDisplaySize(canvas);
+            this.gl.viewport(0, 0, canvas.width, canvas.height);
+            this.gl.clearColor(0, 0, 0, 1.0);
+            this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        }
 
         this.gl.disable(this.gl.DEPTH_TEST);
+        this.gl.disable(this.gl.BLEND);
         this.gl.useProgram(this.programInfo.program);
         // bind vertex array object
         this.gl.bindVertexArray(this.quadVAO);

@@ -2,6 +2,7 @@
 // reference code: https://github.com/tsherif/webgl2examples/blob/master/oit.html
 import vertexShaderSource from '../shaders/accum/accum.vs'
 import fragmentShaderSource from '../shaders/accum/accum.fs'
+import fragmentNoOITShaderSource from '../shaders/accum/accum_no_oit.fs'
 
 import renderVertexShaderSource from '../shaders/accum/quad.vs'
 import renderFragmentShaderSource from '../shaders/accum/quad.fs'
@@ -10,6 +11,8 @@ import renderFragmentShaderSource from '../shaders/accum/quad.fs'
 import * as twgl from "twgl.js";
 import { Camera } from './camera';
 import { mat4, vec3, vec4 } from 'gl-matrix';
+
+import { FramebufferExporter } from './frame_buffer'
 
 
 
@@ -31,18 +34,44 @@ function createImmutableTexture(gl: WebGL2RenderingContext, type: number) : WebG
 
 export class Accumlator {
     gl: WebGL2RenderingContext;
+    normalprogramInfo: twgl.ProgramInfo;
+    normalFramebufferInfo: twgl.FramebufferInfo;
     // the accumlator buffer & program
-    programInfo: twgl.ProgramInfo;
-    framebufferInfo: twgl.FramebufferInfo;
+    oitProgramInfo: twgl.ProgramInfo;
+    oitFramebufferInfo: twgl.FramebufferInfo;
 
     constructor(gl: WebGL2RenderingContext) {
         this.gl = gl;
-        this.programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
+        // depth for both OIT and non-OIT part
+        const texture_depth = createImmutableTexture(gl, gl.DEPTH_COMPONENT16);
+        const texture_depth2 = createImmutableTexture(gl, gl.DEPTH_COMPONENT16);
+        
+        // for none OIT part
+        this.normalprogramInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentNoOITShaderSource]);
+        const texture_normal = createImmutableTexture(gl, gl.RGBA8);
+        
+        const attachments_normal: twgl.AttachmentOptions[] = [
+            {
+                attachment: texture_normal, attachmentPoint: gl.COLOR_ATTACHMENT0,
+            },
+            { 
+                attachment: texture_depth, attachmentPoint: gl.DEPTH_ATTACHMENT,
+            }
+        ];
+
+        this.normalFramebufferInfo = twgl.createFramebufferInfo(gl, attachments_normal);
+        let status_normal = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+        if (status_normal != gl.FRAMEBUFFER_COMPLETE) {
+            alert("frame buffer is not complete!");
+        }
+
+        
+        // for OIT part
+        this.oitProgramInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
         const texture_accumcolor = createImmutableTexture(gl, gl.RGBA16F);
         const texture_accumalpha = createImmutableTexture(gl, gl.R16F);
-        const texture_depth = createImmutableTexture(gl, gl.DEPTH_COMPONENT16);
     
-        const attachments: twgl.AttachmentOptions[] = [
+        const attachments_oit: twgl.AttachmentOptions[] = [
             {
                 attachment: texture_accumcolor, attachmentPoint: gl.COLOR_ATTACHMENT0,
             },
@@ -54,7 +83,7 @@ export class Accumlator {
             }
         ];
 
-        this.framebufferInfo = twgl.createFramebufferInfo(gl, attachments);
+        this.oitFramebufferInfo = twgl.createFramebufferInfo(gl, attachments_oit);
         let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
         if (status != gl.FRAMEBUFFER_COMPLETE) {
             alert("frame buffer is not complete!");
@@ -64,7 +93,7 @@ export class Accumlator {
     }
 
     // the inner render only need to provide the data 
-    render(canvas: HTMLCanvasElement, camera: Camera, lightPosition: vec3, inner_render: (programInfo: twgl.ProgramInfo) => void) {
+    render(canvas: HTMLCanvasElement, camera: Camera, light_position: vec3, normal_render: (programInfo: twgl.ProgramInfo) => void, oit_render: (programInfo: twgl.ProgramInfo) => void) {
         const eye_position = camera.get_eye_position();
         const view_matrix = camera.get_view_matrix();
         const project_matrix = camera.get_projection_matrix(canvas.width, canvas.height);
@@ -74,23 +103,38 @@ export class Accumlator {
         const uniforms = {  
             u_view_proj: view_proj_matrix,
             u_eye_position: eye_position,
-            u_light_position: lightPosition,
+            u_light_position: light_position,
         };
 
-        // draw to the accumlator frame buffer
-        twgl.bindFramebufferInfo(this.gl, this.framebufferInfo);
         
-        // use the accumlator program
-        this.gl.useProgram(this.programInfo.program);
+        
+        // 1. render for the none OIT part: draw to the normal frame buffer
+        twgl.bindFramebufferInfo(this.gl, this.normalFramebufferInfo);
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.depthMask(true);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
+        this.gl.useProgram(this.normalprogramInfo.program);
+        twgl.setUniforms(this.normalprogramInfo, uniforms);
+        // enable depth test & write
+        this.gl.depthFunc(this.gl.LEQUAL);
+        this.gl.disable(this.gl.BLEND);
 
+        normal_render(this.normalprogramInfo);
 
-        twgl.setUniforms(this.programInfo, uniforms);
-
-        this.gl.blendFuncSeparate(this.gl.ONE, this.gl.ONE, this.gl.ZERO, this.gl.ONE_MINUS_SRC_ALPHA);
-
+        // 2. render for the OIT part: draw to the accumlator frame buffer
+        twgl.bindFramebufferInfo(this.gl, this.oitFramebufferInfo);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
-        inner_render(this.programInfo) // render the scene, do something like twgl.drawBufferInfo
+        this.gl.useProgram(this.oitProgramInfo.program);
+        // do not clear the depth buffer
+        twgl.setUniforms(this.oitProgramInfo, uniforms);
+    
+        this.gl.enable(this.gl.DEPTH_TEST);
+        this.gl.depthFunc(this.gl.LEQUAL);
+        this.gl.depthMask(false);
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFuncSeparate(this.gl.ONE, this.gl.ONE, this.gl.ZERO, this.gl.ONE_MINUS_SRC_ALPHA);
+        
+        oit_render(this.oitProgramInfo) 
 
     }
 }
@@ -99,12 +143,15 @@ export class Accumlator {
 export class AccumlatorExporter {
     gl: WebGL2RenderingContext;
 
+    // this is the quad for the frame buffer to the screen
+    normal_exporter: FramebufferExporter;
 
     // This is the quad buffer from the frame buffer to the screen
     renderer: twgl.ProgramInfo;
     quadVAO: WebGLVertexArrayObject;
     quadBufferInfo: twgl.BufferInfo;
     accumlator: Accumlator;
+    
 
     constructor(gl: WebGL2RenderingContext, accumlator: Accumlator) {
         this.gl = gl;
@@ -114,23 +161,31 @@ export class AccumlatorExporter {
         this.quadVAO = twgl.createVAOFromBufferInfo(gl, this.renderer, this.quadBufferInfo)!;
 
         this.accumlator = accumlator;
+
+        // create a framebuffer exporter for normal render
+        this.normal_exporter = new FramebufferExporter(gl, this.accumlator.normalFramebufferInfo);
+        
     }
 
     render(canvas: HTMLCanvasElement) {
-        const accum_framebuffer = this.accumlator.framebufferInfo;
-
+        
         twgl.bindFramebufferInfo(this.gl, null);
         twgl.resizeCanvasToDisplaySize(canvas);
-
         
         this.gl.viewport(0, 0, canvas.width, canvas.height);
+        this.gl.depthMask(true);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-        this.gl.clearColor(0, 0, 0, 1); // note the alpha here is 1
-        this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
-
+        // render the normal part
+        this.normal_exporter.render(canvas, false);
+        
+        // render the accumlator part
+        const accum_framebuffer = this.accumlator.oitFramebufferInfo;
         this.gl.disable(this.gl.DEPTH_TEST);
         this.gl.useProgram(this.renderer.program);
-
+        this.gl.enable(this.gl.BLEND);
+        this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
+        
         // bind vertex array object
         this.gl.bindVertexArray(this.quadVAO);
 
