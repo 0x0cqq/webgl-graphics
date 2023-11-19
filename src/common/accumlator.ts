@@ -11,17 +11,56 @@ import * as twgl from "twgl.js";
 import { Camera } from './camera';
 import { mat4, vec3, vec4 } from 'gl-matrix';
 
+
+
+function createImmutableTexture(gl: WebGL2RenderingContext, type: number) : WebGLTexture {
+    const texture = gl.createTexture() as WebGLTexture;
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+
+    twgl.setTextureParameters(gl, texture, {
+        minMag: gl.NEAREST,
+        wrap: gl.CLAMP_TO_EDGE,
+    });
+
+    gl.texStorage2D(gl.TEXTURE_2D, 1, type, gl.drawingBufferWidth, gl.drawingBufferHeight);
+
+    return texture;
+}
+
 export class Accumlator {
     gl: WebGL2RenderingContext;
     // the accumlator buffer & program
     programInfo: twgl.ProgramInfo;
     framebufferInfo: twgl.FramebufferInfo;
 
-    constructor(gl: WebGL2RenderingContext, accum_framebuffer: twgl.FramebufferInfo) {
+    constructor(gl: WebGL2RenderingContext) {
         this.gl = gl;
         this.programInfo = twgl.createProgramInfo(gl, [vertexShaderSource, fragmentShaderSource]);
-        this.framebufferInfo = accum_framebuffer;
+        const texture_accumcolor = createImmutableTexture(gl, gl.RGBA16F);
+        const texture_accumalpha = createImmutableTexture(gl, gl.R16F);
+        const texture_depth = createImmutableTexture(gl, gl.DEPTH_COMPONENT16);
+    
+        const attachments: twgl.AttachmentOptions[] = [
+            {
+                attachment: texture_accumcolor, attachmentPoint: gl.COLOR_ATTACHMENT0,
+            },
+            {
+                attachment: texture_accumalpha, attachmentPoint: gl.COLOR_ATTACHMENT1,
+            },
+            {
+                attachment: texture_depth, attachmentPoint: gl.DEPTH_ATTACHMENT,
+            }
+        ];
 
+        this.framebufferInfo = twgl.createFramebufferInfo(gl, attachments);
+        let status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+        if (status != gl.FRAMEBUFFER_COMPLETE) {
+            alert("frame buffer is not complete!");
+        }
+
+        twgl.bindFramebufferInfo(gl, null);
     }
 
     // the inner render only need to provide the data 
@@ -32,7 +71,7 @@ export class Accumlator {
         const view_proj_matrix = mat4.multiply(mat4.create(), project_matrix, view_matrix);
     
         // basic view/light uniform for the vertex & fragment shader
-        const uniforms = { 
+        const uniforms = {  
             u_view_proj: view_proj_matrix,
             u_eye_position: eye_position,
             u_light_position: lightPosition,
@@ -65,19 +104,21 @@ export class AccumlatorExporter {
     renderer: twgl.ProgramInfo;
     quadVAO: WebGLVertexArrayObject;
     quadBufferInfo: twgl.BufferInfo;
+    accumlator: Accumlator;
 
-
-
-    constructor(gl: WebGL2RenderingContext) {
+    constructor(gl: WebGL2RenderingContext, accumlator: Accumlator) {
         this.gl = gl;
         this.renderer = twgl.createProgramInfo(gl, [renderVertexShaderSource, renderFragmentShaderSource]);
 
         this.quadBufferInfo = twgl.primitives.createXYQuadBufferInfo(gl);
         this.quadVAO = twgl.createVAOFromBufferInfo(gl, this.renderer, this.quadBufferInfo)!;
 
+        this.accumlator = accumlator;
     }
 
-    render(canvas: HTMLCanvasElement, accum_framebuffer: twgl.FramebufferInfo) {
+    render(canvas: HTMLCanvasElement) {
+        const accum_framebuffer = this.accumlator.framebufferInfo;
+
         twgl.bindFramebufferInfo(this.gl, null);
         twgl.resizeCanvasToDisplaySize(canvas);
 

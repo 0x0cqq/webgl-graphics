@@ -53,6 +53,60 @@ export class Camera {
         this.yaw = yaw;
         this.pitch = pitch;
         this.update_camera_vectors();
+        
+        // set up interactions
+    }
+
+    setup_interaction(canvas: HTMLCanvasElement, callbackOnMove: (camera: Camera) => void = (camera: Camera) => {}) {
+            // catch scroll event to zoom in/out
+        document.addEventListener('wheel', (e) => {
+            this.process_mouse_scroll(e.deltaY > 0 ? 1 : -1);
+            callbackOnMove(this);
+        });
+        // catch key event to move camera
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'w':
+                    this.process_keyboard(CameraMovement.FORWARD, 0.1);
+                    break;
+                case 's':
+                    this.process_keyboard(CameraMovement.BACKWARD, 0.1);
+                    break;
+                case 'a':
+                    this.process_keyboard(CameraMovement.LEFT, 0.1);
+                    break;
+                case 'd':
+                    this.process_keyboard(CameraMovement.RIGHT, 0.1);
+                    break;
+                case 'q':
+                    this.process_keyboard(CameraMovement.UP, 0.1);
+                    break;
+                case 'e':
+                    this.process_keyboard(CameraMovement.DOWN, 0.1);
+                    break;
+            }
+            callbackOnMove(this);
+        });
+        // catch mouse down/up event to rotate camera
+        let mouse_down = false, last_x = 0, last_y = 0;
+        canvas.addEventListener('mousedown', function (e) {
+            mouse_down = true;
+            last_x = e.clientX;
+            last_y = e.clientY;
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (!mouse_down) return;
+            this.process_mouse_movement(e.clientX - last_x, e.clientY - last_y);
+            last_x = e.clientX;
+            last_y = e.clientY;
+            callbackOnMove(this);
+        });
+        canvas.addEventListener('mouseup', (e) => {
+            mouse_down = false;
+        });
+        canvas.addEventListener('mouseleave', (e) => {
+            mouse_down = false;
+        });
     }
 
     set_position(position: vec3) {
