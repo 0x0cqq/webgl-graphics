@@ -3,109 +3,11 @@ import * as twgl from 'twgl.js';
 import { Camera } from './common/camera';
 
 // import three obj loader and mtl loader
-
-import { load_obj_to_twgl } from './common/obj_loader';
-
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
+import { createMeshesFromFileName, createDrawObjectsFromMeshes, createBufferColored, createImmutableImageTexture } from './common/objects/objfile';
 
 import chromeImage from './assets/chrome.png';
 import { Accumlator, AccumlatorExporter } from './common/accumlator';
-
-
-function addRandomColor(verticesArray: { [key: string]: twgl.primitives.TypedArray }, alpha: number = 1): void {
-    const numElements = verticesArray.position.length / 3;
-    const colors = twgl.primitives.createAugmentedTypedArray(4, numElements);
-    for (let i = 0; i < numElements; ++i) {
-        colors.push(1, 1, 1, alpha);
-    }
-    verticesArray.color = colors;
-}
-
-function createVerticesFromMesh(ca: THREE.Mesh, gl: WebGL2RenderingContext) {
-    const vertices = {
-        position: twgl.primitives.createAugmentedTypedArray(3, ca.geometry.attributes.position.array.length / 3),
-        normal: twgl.primitives.createAugmentedTypedArray(3, ca.geometry.attributes.normal.array.length / 3),
-        texcoord: twgl.primitives.createAugmentedTypedArray(2, ca.geometry.attributes.uv.array.length / 2),
-    };
-
-    for (let i = 0; i < ca.geometry.attributes.position.array.length; i += 3) {
-        vertices.position.push(ca.geometry.attributes.position.array[i], ca.geometry.attributes.position.array[i + 1], ca.geometry.attributes.position.array[i + 2]);
-    }
-    for (let i = 0; i < ca.geometry.attributes.normal.array.length; i += 3) {
-        vertices.normal.push(ca.geometry.attributes.normal.array[i], ca.geometry.attributes.normal.array[i + 1], ca.geometry.attributes.normal.array[i + 2]);
-    }
-    for (let i = 0; i < ca.geometry.attributes.uv.array.length; i += 2) {
-        vertices.texcoord.push(ca.geometry.attributes.uv.array[i], ca.geometry.attributes.uv.array[i + 1]);
-    }
-
-    console.log(vertices);
-
-    return vertices;
-}
-
-async function createTextureFromMesh(ca: THREE.Mesh, gl: WebGL2RenderingContext) {
-    // get texture from obj & mtl file for cyborg, using three.js
-    const material = ca.material as THREE.MeshPhongMaterial;
-    console.log(material);
-    // transform to webgl texture
-    const image = new Image();
-
-    // wait until material.map == null || material.map!.image == null || material.map!.image.src == null
-    while (material.map == null || material.map!.image == null || material.map!.image.src == null) {
-        await new Promise<void>((resolve) => {
-            setTimeout(() => {
-                resolve();
-            }, 100);
-        });
-    }
-
-    image.src = material.map!.image.src;
-
-    await new Promise<void>((resolve) => {
-        image.onload = () => {
-            resolve();
-        }
-    });
-    console.log(image);
-    const imageTexture = createImmutableImageTexture(gl, image);
-    return imageTexture;
-}
-
-function createImmutableImageTexture(gl: WebGL2RenderingContext, image: HTMLImageElement): WebGLTexture {
-    const texture = gl.createTexture() as WebGLTexture;
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-
-    twgl.setTextureParameters(gl, texture, {
-        mag: gl.LINEAR,
-        min: gl.LINEAR_MIPMAP_LINEAR,
-        wrap: gl.REPEAT,
-    });
-
-    const levels = Math.floor(Math.log2(Math.max(image.width, image.height))) + 1;
-
-    gl.texStorage2D(gl.TEXTURE_2D, levels, gl.RGBA8, image.width, image.height);
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, image.width, image.height, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    gl.generateMipmap(gl.TEXTURE_2D);
-
-    return texture;
-}
-
-function create_buffer_vao_colored(vertices: { [key: string]: twgl.primitives.TypedArray }, gl: WebGL2RenderingContext, programInfo: twgl.ProgramInfo, alpha: number = 1): { buffer: twgl.BufferInfo, vao: WebGLVertexArrayObject } {
-    // create a cube
-    addRandomColor(vertices, alpha);
-    // create a cube buffer
-    const buffer = twgl.createBufferInfoFromArrays(gl, vertices);
-    // create a cube VAO
-    const vao = twgl.createVAOFromBufferInfo(gl, programInfo, buffer);
-    console.log(vertices);
-    return {
-        buffer: buffer,
-        vao: vao!,
-    }
-}
+import { getWhiteTexture, myDrawObjectList } from './utils/twgl_utils';
 
 
 async function main() {
@@ -153,35 +55,13 @@ async function main() {
     console.log(image.width, image.height)
     const image_texture_cube = createImmutableImageTexture(gl, image);
 
-    const cubeVertices = twgl.primitives.createTruncatedConeVertices(4, 2, 4, 100, 100);
-    const { buffer: cubeBuffer, vao: cubeVAO } = create_buffer_vao_colored(cubeVertices, gl, accumlator.oitProgramInfo, 0.5);
-
+    const cubeVertices = twgl.primitives.createCubeVertices(4);
+    const cubeBuffer = createBufferColored(cubeVertices, gl, 1);
 
     // load with three.js
-    const loader = new OBJLoader();
-    const mtlLoader = new MTLLoader();
-    const materials = await mtlLoader.loadAsync('./models/nanosuit/nanosuit.mtl');
-    materials.preload();
-    loader.setMaterials(materials);
-    const cyborg = await loader.loadAsync('./models/nanosuit/nanosuit.obj');
-    console.log(cyborg);
+    const meshes = await createMeshesFromFileName('./models/nanosuit/nanosuit', gl);
+    const meshDrawObjects = createDrawObjectsFromMeshes(meshes, accumlator.normalprogramInfo);
 
-    // build vertices array
-    const buffers: twgl.BufferInfo[] = [];
-    const vaos: WebGLVertexArrayObject[] = [];
-    const imageTextures: WebGLTexture[] = [];
-
-    const length = cyborg.children.length;
-    for (let i = 0; i < length; i++) {
-        const ca = cyborg.children[i] as THREE.Mesh;
-        const vertices = createVerticesFromMesh(ca, gl);
-        const { buffer, vao } = create_buffer_vao_colored(vertices, gl, accumlator.oitProgramInfo);
-        buffers.push(buffer);
-        vaos.push(vao);
-
-        const imageTexture = await createTextureFromMesh(ca, gl);
-        imageTextures.push(imageTexture);
-    }
 
     function render(time: number) {
         time *= 0.001;
@@ -202,14 +82,8 @@ async function main() {
 
                 twgl.setUniforms(programInfo, uniforms);
 
-                for (let i = 0; i < length; i++) {
-                    const this_uniform = {
-                        u_texture: imageTextures[i],
-                    };
-                    twgl.setUniforms(programInfo, this_uniform);
-                    gl.bindVertexArray(vaos[i]);
-                    twgl.drawBufferInfo(gl, buffers[i]);
-                }
+                myDrawObjectList(gl, meshDrawObjects);
+
             },
             // oit render
             (programInfo: twgl.ProgramInfo) => {
@@ -223,11 +97,14 @@ async function main() {
                 const uniforms = {
                     u_model_matrix: modelMatrix,
                     u_texture: image_texture_cube,
+                    u_specular_texture: getWhiteTexture(gl),
+                    u_bump_texture: getWhiteTexture(gl),
                 };
 
                 twgl.setUniforms(programInfo, uniforms);
 
-                gl.bindVertexArray(cubeVAO);
+                twgl.createVAOFromBufferInfo(gl, programInfo, cubeBuffer);
+                twgl.setBuffersAndAttributes(gl, programInfo, cubeBuffer);
                 twgl.drawBufferInfo(gl, cubeBuffer);
 
             });
@@ -241,9 +118,7 @@ async function main() {
 
     requestAnimationFrame(render);
 
-
+    console.log("ready.")
 }
 
 main()
-
-console.log('ready.')

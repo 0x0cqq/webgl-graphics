@@ -105,7 +105,6 @@ export class Accumlator {
             u_eye_position: eye_position,
             u_light_position: light_position,
         };
-
         
         
         // 1. render for the none OIT part: draw to the normal frame buffer
