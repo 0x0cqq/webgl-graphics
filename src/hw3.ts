@@ -3,11 +3,12 @@ import * as twgl from 'twgl.js';
 import { Camera } from './common/camera';
 
 // import three obj loader and mtl loader
-import { createMeshesFromFileName, createDrawObjectsFromMeshes, createBufferColored, createImmutableImageTexture } from './common/objects/objfile';
+import { createThreeMeshesFromFileName, createDrawObjectsFromMeshes, createBufferColored, createImmutableImageTexture, createTWGLMeshesFromThreeMeshes } from './common/objects/objfile';
 
 import chromeImage from './assets/chrome.png';
 import { Accumlator, AccumlatorExporter } from './common/accumlator';
 import { getWhiteTexture, myDrawObjectList } from './utils/twgl_utils';
+import { RayTracer, Scene } from './common/raytracer';
 
 
 async function main() {
@@ -30,9 +31,15 @@ async function main() {
     twgl.setDefaults({ attribPrefix: "a_" });
 
 
-    const camera = new Camera(vec3.fromValues(0.0, 8.0, 30.0));
+    const camera = new Camera(vec3.fromValues(0.0, 8.0, 80.0));
     camera.setup_interaction(canvas);
-    const lightPosition = vec3.fromValues(0, 0, 10);
+    const lightPosition = vec3.fromValues(0, 0, 20);
+
+
+    const scene = new Scene(camera, lightPosition);
+
+    const rayTracer = new RayTracer(scene, 1, 1);
+
 
     // accumlator and exporter
     const accumlator = new Accumlator(gl);
@@ -59,8 +66,18 @@ async function main() {
     const cubeBuffer = createBufferColored(cubeVertices, gl, 1);
 
     // load with three.js
-    const meshes = await createMeshesFromFileName('./models/nanosuit/nanosuit', gl);
+    const three_meshes = await createThreeMeshesFromFileName('./models/nanosuit/nanosuit', gl);
+    console.log(three_meshes);
+
+    const meshes = await createTWGLMeshesFromThreeMeshes(three_meshes, gl);
     const meshDrawObjects = createDrawObjectsFromMeshes(meshes, accumlator.normalprogramInfo);
+
+    for(let i = 0; i < three_meshes.length; i++) {
+        await scene.add_mesh(three_meshes[i] as THREE.Mesh);
+    }
+
+    console.log(scene)
+
 
 
     function render(time: number) {
@@ -118,7 +135,21 @@ async function main() {
 
     requestAnimationFrame(render);
 
+
+    // const imageData = rayTracer.do_raytracing(100, 100);
+    // console.log(imageData);
+    // // output data to canvas
+    // const raytraceCanvas = document.querySelector("#raytrace") as HTMLCanvasElement;
+    // const raytraceContext = raytraceCanvas.getContext("2d")!;
+    // raytraceCanvas.style.width = imageData.width + "px";
+    // raytraceCanvas.style.height = imageData.height + "px";
+    // raytraceCanvas.width = imageData.width;
+    // raytraceCanvas.height = imageData.height;
+
+    // raytraceContext.putImageData(imageData, 0, 0);
+
     console.log("ready.")
 }
+
 
 main()

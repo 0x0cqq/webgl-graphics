@@ -7,6 +7,15 @@ export function getWhiteTexture(gl: WebGL2RenderingContext) {
     });
 }
 
+export function getWhiteImageData() {
+    const data = new ImageData(1, 1);
+    data.data[0] = 255;
+    data.data[1] = 255;
+    data.data[2] = 255;
+    data.data[3] = 255;
+    return data;
+}
+
 
 export function myDrawObjectList(gl: WebGL2RenderingContext, objectsToDraw: twgl.DrawObject[]) {
     for(const object of objectsToDraw) {

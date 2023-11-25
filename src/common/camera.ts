@@ -139,7 +139,8 @@ export class Camera {
 
 
     get_eye_position(): vec3 {
-        return this.position;
+        // copy the position
+        return vec3.clone(this.position);
     }
 
     get_view_matrix(): mat4 {

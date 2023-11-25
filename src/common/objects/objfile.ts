@@ -1,11 +1,13 @@
 import * as twgl from 'twgl.js'
 
-import { getWhiteTexture } from '../../utils/twgl_utils';
+import { getWhiteImageData, getWhiteTexture } from '../../utils/twgl_utils';
 
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 
-interface Mesh {
+const max_times = 30;
+
+export interface TWGLMesh {
     verticesArray: { [key: string]: twgl.primitives.TypedArray };
     bufferInfo: twgl.BufferInfo;
     diffuseTexture: WebGLTexture;
@@ -13,7 +15,7 @@ interface Mesh {
     bumpTexture: WebGLTexture;
 }
 
-function createVerticesFromMesh(ca: THREE.Mesh, gl: WebGL2RenderingContext) {
+export function createVerticesFromMesh(ca: THREE.Mesh) {
     const vertices = {
         position: twgl.primitives.createAugmentedTypedArray(3, ca.geometry.attributes.position.array.length / 3),
         normal: twgl.primitives.createAugmentedTypedArray(3, ca.geometry.attributes.normal.array.length / 3),
@@ -29,9 +31,6 @@ function createVerticesFromMesh(ca: THREE.Mesh, gl: WebGL2RenderingContext) {
     for (let i = 0; i < ca.geometry.attributes.uv.array.length; i += 2) {
         vertices.texcoord.push(ca.geometry.attributes.uv.array[i], ca.geometry.attributes.uv.array[i + 1]);
     }
-
-    console.log(vertices);
-
     return vertices;
 }
 
@@ -80,6 +79,18 @@ async function createTextureFromMesh(ca: THREE.Mesh, gl: WebGL2RenderingContext)
     return {diffuse_texture, specular_texture, bump_texture};
 }
 
+export async function createImageDataFromMesh(ca: THREE.Mesh) {
+    // get texture from obj & mtl file for cyborg, using three.js
+    const material = ca.material as THREE.MeshPhongMaterial;
+    console.log(material);
+
+    const diffuse_texture = await getImageDataFromThreeTexture(material.map);
+    const specular_texture = await getImageDataFromThreeTexture(material.specularMap);
+    const bump_texture = await getImageDataFromThreeTexture(material.bumpMap);
+
+    return {diffuse_texture, specular_texture, bump_texture};
+}
+
 export function createImmutableImageTexture(gl: WebGL2RenderingContext, image: HTMLImageElement): WebGLTexture {
     const texture = gl.createTexture() as WebGLTexture;
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -101,11 +112,42 @@ export function createImmutableImageTexture(gl: WebGL2RenderingContext, image: H
     return texture;
 }
 
+async function getImageDataFromThreeTexture(three_texture: THREE.Texture | null) {
+    let times = 0;
+    while ((three_texture == null || three_texture.image == null || three_texture.image.src == null) && times < max_times) {
+        await new Promise<void>((resolve) => {
+            setTimeout(() => {
+                resolve();
+            }, 20);
+        });
+        times += 1;
+    }
+
+    if (three_texture == null || three_texture.image == null || three_texture.image.src == null) {
+        return getWhiteImageData();
+    } else {
+        const src = three_texture!.image.src;
+        const image = new Image();
+        image.src = src;
+        await new Promise<void>((resolve) => {
+            image.onload = () => {
+                resolve();
+            }
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(image, 0, 0);
+        return context.getImageData(0, 0, image.width, image.height);
+    }
+}
+
 
 
 async function getWebGLTextureFromThreeTexture(three_texture: THREE.Texture | null, gl: WebGL2RenderingContext) {
     let times = 0;
-    while ((three_texture == null || three_texture.image == null || three_texture.image.src == null) && times < 10) {
+    while ((three_texture == null || three_texture.image == null || three_texture.image.src == null) && times < max_times) {
         await new Promise<void>((resolve) => {
             setTimeout(() => {
                 resolve();
@@ -129,8 +171,7 @@ async function getWebGLTextureFromThreeTexture(three_texture: THREE.Texture | nu
     }
 }
 
-
-export async function createMeshesFromFileName(name: string, gl: WebGL2RenderingContext): Promise<Mesh[]> {
+export async function createThreeMeshesFromFileName(name: string, gl: WebGL2RenderingContext) {
     const loader = new OBJLoader();
     const mtlLoader = new MTLLoader();
     const materials = await mtlLoader.loadAsync(name + '.mtl');
@@ -139,15 +180,24 @@ export async function createMeshesFromFileName(name: string, gl: WebGL2Rendering
     const model = await loader.loadAsync(name + '.obj');
     console.log(model);
     const length = model.children.length;
-    
-    const meshes: Mesh[] = [];
+    const meshes: THREE.Mesh[] = [];
     for (let i = 0; i < length; i++) {
         const ca = model.children[i] as THREE.Mesh;
-        const vertices = createVerticesFromMesh(ca, gl);
+        meshes.push(ca as THREE.Mesh);
+    }
+    return meshes;
+}
+
+export async function createTWGLMeshesFromThreeMeshes(meshes: THREE.Mesh[], gl: WebGL2RenderingContext) {
+    const twglMeshes: TWGLMesh[] = [];
+    const length = meshes.length;
+    for (let i = 0; i < length; i++) {
+        const ca = meshes[i];
+        const vertices = createVerticesFromMesh(ca);
         const buffer = createBufferColored(vertices, gl);
 
         const { diffuse_texture, specular_texture, bump_texture } = await createTextureFromMesh(ca, gl);
-        meshes.push({
+        twglMeshes.push({
             verticesArray: vertices,
             bufferInfo: buffer,
             diffuseTexture: diffuse_texture,
@@ -155,10 +205,10 @@ export async function createMeshesFromFileName(name: string, gl: WebGL2Rendering
             bumpTexture: bump_texture,
         });
     }
-    return meshes;
+    return twglMeshes;
 }
 
-function createDrawObjectFromMesh(mesh: Mesh, programInfo: twgl.ProgramInfo) {
+function createDrawObjectFromMesh(mesh: TWGLMesh, programInfo: twgl.ProgramInfo) {
     return {
         programInfo: programInfo,
         bufferInfo: mesh.bufferInfo,
@@ -170,7 +220,7 @@ function createDrawObjectFromMesh(mesh: Mesh, programInfo: twgl.ProgramInfo) {
     }
 }
 
-export function createDrawObjectsFromMeshes(meshes: Mesh[], programInfo: twgl.ProgramInfo) {
+export function createDrawObjectsFromMeshes(meshes: TWGLMesh[], programInfo: twgl.ProgramInfo) {
     const drawObjects = [];
     for (let i = 0; i < meshes.length; i++) {
         drawObjects.push(createDrawObjectFromMesh(meshes[i], programInfo));
