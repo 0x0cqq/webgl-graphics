@@ -10,6 +10,24 @@ import { Accumlator, AccumlatorExporter } from './common/accumlator';
 import { getWhiteTexture, myDrawObjectList } from './utils/twgl_utils';
 import { RayTracer, Scene } from './common/raytracer';
 
+function do_raytracing(rayTracer: RayTracer, percent_callback: (percent: number) => void = (percent: number) => {}) {
+    const imageData = rayTracer.do_raytracing(200, 200, (percent: number) => {
+        percent_callback(percent);
+    });
+
+
+    console.log(imageData);
+    // output data to canvas
+    const raytraceCanvas = document.querySelector("#raytrace") as HTMLCanvasElement;
+    const raytraceContext = raytraceCanvas.getContext("2d")!;
+    raytraceCanvas.style.width = imageData.width + "px";
+    raytraceCanvas.style.height = imageData.height + "px";
+    raytraceCanvas.width = imageData.width;
+    raytraceCanvas.height = imageData.height;
+
+    raytraceContext.putImageData(imageData, 0, 0);
+
+}
 
 async function main() {
     // Get A WebGL context
@@ -78,6 +96,15 @@ async function main() {
 
     console.log(scene)
 
+    const button = document.querySelector("#render") as HTMLButtonElement;
+    const progress_span = document.querySelector("#progress") as HTMLSpanElement;
+
+    button.onclick = () => {
+        do_raytracing(rayTracer, (percent: number) => {
+            progress_span.innerHTML = percent.toFixed(2) + "%";
+        });
+    }
+
 
 
     function render(time: number) {
@@ -91,7 +118,7 @@ async function main() {
             (programInfo: twgl.ProgramInfo) => {
                 const modelMatrix = mat4.create();
                 // mat4.rotateX(modelMatrix, modelMatrix, time);
-                mat4.rotateY(modelMatrix, modelMatrix, time);
+                // mat4.rotateY(modelMatrix, modelMatrix, time);
 
                 const uniforms = {
                     u_model_matrix: modelMatrix,
@@ -135,21 +162,10 @@ async function main() {
 
     requestAnimationFrame(render);
 
-
-    // const imageData = rayTracer.do_raytracing(100, 100);
-    // console.log(imageData);
-    // // output data to canvas
-    // const raytraceCanvas = document.querySelector("#raytrace") as HTMLCanvasElement;
-    // const raytraceContext = raytraceCanvas.getContext("2d")!;
-    // raytraceCanvas.style.width = imageData.width + "px";
-    // raytraceCanvas.style.height = imageData.height + "px";
-    // raytraceCanvas.width = imageData.width;
-    // raytraceCanvas.height = imageData.height;
-
-    // raytraceContext.putImageData(imageData, 0, 0);
-
     console.log("ready.")
 }
+
+
 
 
 main()

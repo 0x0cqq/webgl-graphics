@@ -1,4 +1,4 @@
-import { vec3, vec2, vec4 } from "gl-matrix";
+import { vec3, vec2, vec4, glMatrix } from "gl-matrix";
 import { Camera } from "./camera";
 import { deg_to_rad } from "../utils/math_utils";
 import * as THREE from 'three';
@@ -17,13 +17,19 @@ function clamp(num: number) {
     return Math.max(0, Math.min(1, num));
 }
 
+function repeat(num: number) {
+    return num - Math.floor(num);
+}
+
 // uv is in [0, 1] x [0, 1] 
 function fetchPixelFromImageData(image: ImageData, uv: vec2): vec4 {
-    if(!checkUV(uv)) {
-        return vec4.fromValues(0, 0, 0, 0);
-    }
-    const x = Math.round(uv[0] * image.width);
-    const y = Math.round((1-uv[1]) * image.height);
+    // if(!checkUV(uv)) {
+    //     return vec4.fromValues(255, 0, 0, 255);
+    // }
+    const u = repeat(uv[0]); 
+    const v = repeat(uv[1]);
+    const x = Math.floor(u * image.width);
+    const y = Math.floor((v) * image.height);
     const index = (y * image.width + x) * 4;
     return vec4.fromValues(image.data[index], image.data[index + 1], image.data[index + 2], image.data[index + 3]);   
 }
@@ -65,9 +71,11 @@ function getReflectedRayDirection(ray: vec3, normal: vec3): vec3 {
     const projection = vec3.scale(vec3.create(), normal_normed, vec3.dot(ray_normed, normal_normed));
     const delta = vec3.sub(vec3.create(), ray_normed, projection);
     // 这里要两倍
-    const reflected = vec3.sub(vec3.create(), ray_normed, vec3.scale(vec3.create(), delta, 2));
-    return reflected;
+    const reflected = vec3.scaleAndAdd(vec3.create(), ray_normed, delta, 2);
+    const reflected_normed = vec3.normalize(vec3.create(), reflected);
+    return reflected_normed;
 }
+
 
 class Ray {
     origin: vec3; // the origin of the ray in world space
@@ -156,8 +164,7 @@ class TriangleFace {
     }
 
     texcoord_interpolated(b1: number, b2: number): vec2 {
-        const result = this.vec2_interpolated(b1, b2, this.texcoord[0], this.texcoord[1], this.texcoord[2]);
-        return vec2.fromValues(clamp(result[0]), clamp(result[1]));
+        return this.vec2_interpolated(b1, b2, this.texcoord[0], this.texcoord[1], this.texcoord[2]);
     }
 
 }
@@ -304,7 +311,6 @@ export class RayTracer {
     // sample times
     sample_times: number;
     // moving average coefficient constant
-    alpha: number = 1;
     constructor(scene: Scene, depth: number = 5, sample_times: number = 10) {
         this.scene = scene;
         this.depth = depth;
@@ -317,7 +323,7 @@ export class RayTracer {
             // the i times reflected/refracted ray
             const nearest_face = this.scene.find_nearest_intersection(ray);
             if (nearest_face === null) {
-                return vec3.fromValues(0, 0, 0); // return black
+                return vec3.fromValues(255, 255, 255); // return black
             } else {
                 // get the intersection point
                 const [is_intersected, p, t, b1, b2] = nearest_face.is_intersected_with(ray);
@@ -327,41 +333,45 @@ export class RayTracer {
                 // // get the normal of the intersection point, use a barycentric interpolation
                 let normal = nearest_face.normal_interpolated(b1, b2);
                 // // get the color of the intersection point
-                const this_texcoord = nearest_face.texcoord[0];
-                // const this_texcoord = nearest_face.texcoord_interpolated(b1, b2);
+                const this_texcoord = nearest_face.texcoord_interpolated(b1, b2);
                 const diffuse_color = fetchPixelFromImageData(nearest_face.mesh.diffuse_image, this_texcoord);
-                if(diffuse_color[3] === 0) {
-                    return vec3.fromValues(255, 255, 255);
-                } else {
-                    return vec3.fromValues(diffuse_color[0], diffuse_color[1], diffuse_color[2]);
-                }
+                const specular_color = fetchPixelFromImageData(nearest_face.mesh.specular_image, this_texcoord);
+
+                // const bump_color = fetchPixelFromImageData(nearest_face.mesh.bump_image, this_texcoord);
+                // // // modify the normal by bump mapping (TODO)
                 
-                // const specular_color = fetchPixelFromImageData(nearest_face.specular_image, texcoord);
-                // const bump_color = fetchPixelFromImageData(nearest_face.bump_image, texcoord);
-                // // modify the normal by bump mapping (TODO)
-                
-                // // get the light direction
+                // // // get the light direction
                 const light_direction = vec3.sub(vec3.create(), this.scene.lightPosition, p);
-                // vec3.normalize(light_direction, light_direction);
-                // // return vec3.fromValues(diffuse_color[0], diffuse_color[1], diffuse_color[2]);
+                vec3.normalize(light_direction, light_direction);
                 
                 // // get the reflect direction
-                // const reflect_direction = getReflectedRayDirection(ray.direction, normal);
+                const reflect_direction = getReflectedRayDirection(ray.direction, normal);
+                const light_reflect_direction = getReflectedRayDirection(light_direction, normal);
                 // // calculate the color
-                const this_place_color = vec4.create();
-                vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, Math.max(0, vec3.dot(normal, light_direction)));
-                // vec4.scaleAndAdd(this_place_color, this_place_color, specular_color, Math.pow(Math.max(0, vec3.dot(reflect_direction, light_direction)), 10));
+                let this_place_color = vec4.create();
+                const ambient_light = 0.3;
+                const diffuse_light = Math.max(0, vec3.dot(normal, light_direction));
+                const specular_light = Math.pow(Math.max(0, vec3.dot(light_reflect_direction, vec3.negate(vec3.create(), ray.direction))), 3);
+
+                vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, ambient_light);
+                vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, diffuse_light);
+                vec4.scaleAndAdd(this_place_color, this_place_color, specular_color, specular_light);
+
+
                 // // update the ray
                 // ray.origin = p;
                 // ray.direction = reflect_direction;
                 
                 // console.log("intersected")
+                // if(this_place_color[3] <= 10) {
+                //     return vec3.fromValues(255, 0, 0);
+                // }
                 return vec3.fromValues(this_place_color[0], this_place_color[1], this_place_color[2]);
             }
         }
         return total_color;
     }
-    do_raytracing(width: number, height: number): ImageData {
+    do_raytracing(width: number, height: number, callback: (percent: number) => void): ImageData {
         // too big, will refuse to run
         if (width * height > 1000000) {
             alert("too big width & height")
@@ -374,7 +384,7 @@ export class RayTracer {
             color_buffer[i] = 0;
         }
         // do ray tracing
-        let total_work = 0;
+        let total_work = 0, target_work = width * height * this.sample_times;
         for(let k = 0; k < this.sample_times; k++) {
             for (let i = 0; i < width; i++) {
                 for(let j = 0; j < height; j++) {
@@ -384,13 +394,14 @@ export class RayTracer {
                     const pixel = this.trace(ray);
                     // use a moving average to get the color
                     const index = (j * width + i) * 4;
-                    color_buffer[index] = (1 - this.alpha) * color_buffer[index] + this.alpha * pixel[0];
-                    color_buffer[index + 1] = (1 - this.alpha) * color_buffer[index + 1] + this.alpha * pixel[1];
-                    color_buffer[index + 2] = (1 - this.alpha) * color_buffer[index + 2] + this.alpha * pixel[2];
+                    color_buffer[index] = pixel[0];
+                    color_buffer[index + 1] = pixel[1];
+                    color_buffer[index + 2] = pixel[2];
                     color_buffer[index + 3] = 255;
                     total_work += 1;
                     if(total_work % 100 === 0) {
-                        console.log(total_work);
+                        console.log(total_work / target_work)
+                        callback(total_work / target_work);
                     }
                 }
             }

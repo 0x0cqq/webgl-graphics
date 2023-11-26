@@ -7,6 +7,13 @@
 <body>
     <h1>作业3：真实感渲染</h1>
     <canvas id="canvas" style="height: 60vh; width: 60vh;  display:block; border:1px solid #000000; margin: 0 auto;"></canvas>
-    <canvas id="raytrace" style="height: 128px; width: 128px;  display:block; border:1px solid #000000; margin: 0 auto;"></canvas>
+    <br/>
+    <div style="display: flex; justify-content: space-around; align-items: center;">
+        <div>
+            <button id="render" style="width: 100px; height: min-content;">渲染</button>
+            <p>当前进度：<span id="progress"></span></p>
+        </div>
+        <canvas id="raytrace" style="height: 128px; width: 128px;  display:block; border:1px solid #000000; margin: 1em;"></canvas>
+    </div>
 </body>
 </html>
