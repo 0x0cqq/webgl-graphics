@@ -5,10 +5,10 @@ import { CameraData } from "./config";
 import { Camera } from "../camera";
 import { Mesh, Scene } from "../raytracer";
 import { createThreeMeshesFromFileName } from '../meshs/mesh_three';
-import { TWGLMesh, createDrawObjectsFromTWGLMeshes, createTWGLMeshesFromThreeMeshes } from "../meshs/mesh_twgl";
+import { TWGLMesh, addRandomColor, createDrawObjectsFromTWGLMeshes, createTWGLMeshesFromThreeMeshes } from "../meshs/mesh_twgl";
 import * as THREE from "three";
 import * as twgl from "twgl.js";
-import { getWhiteImageData, getWhiteTexture } from "../utils/twgl_utils";
+import { getDefaultSkyBox, getWhiteImageData, getWhiteTexture } from "../utils/twgl_utils";
 import { createImmutableImageTexture } from "../meshs/image_utils";
 
 
@@ -183,7 +183,9 @@ class RayTraceConfigReader {
 
         const imagedata = await this.createImageDataFromTextureData(objectData.texture);
 
-        const mesh = new Mesh(position, normals, texcoord, imagedata, getWhiteImageData(), getWhiteImageData());
+        const this_position = vec3.fromValues(objectData.position[0], objectData.position[1], objectData.position[2]);
+
+        const mesh = new Mesh(this_position, position, normals, texcoord, imagedata, getWhiteImageData(), getWhiteImageData());
         return [mesh];
     }
 
@@ -212,7 +214,8 @@ class RayTraceConfigReader {
                 if (mesh instanceof Mesh) {
                     scene.addMesh(mesh);
                 } else {
-                    await scene.addThreeMesh(mesh);
+                    const this_position = vec3.fromValues(object.position[0], object.position[1], object.position[2]);
+                    await scene.addThreeMesh(mesh, this_position);
                 }
             }
         }
@@ -227,12 +230,18 @@ class RayTraceConfigReader {
         if(objectData.texture.type == TextureType.FILE) { // read from obj/mtl file
             const three_meshes = await createThreeMeshesFromFileName(objectData.texture.file!, this.gl);
             const twgl_meshes = await createTWGLMeshesFromThreeMeshes(three_meshes, this.gl);
-            const drawObjects = createDrawObjectsFromTWGLMeshes(twgl_meshes, normalProgramInfo);
+            const this_position = vec3.fromValues(objectData.position[0], objectData.position[1], objectData.position[2]);
+            const drawObjects = createDrawObjectsFromTWGLMeshes(twgl_meshes, normalProgramInfo, this_position, this.gl);
             for(const drawObject of drawObjects) {
                 normalDrawObjects.push(drawObject);
             }
         } else {
             const vertices = this.getVerticesFromType(objectData.shape);
+            if(objectData.material == MaterialType.REFRACTIVE) {
+                addRandomColor(vertices, 0.5);
+            } else {
+                addRandomColor(vertices);
+            }
             const imageTexture = await this.createWebGLTextureFromTextureData(objectData.texture);
 
             const getProgramInfo = () => {
@@ -248,6 +257,8 @@ class RayTraceConfigReader {
 
             const position = vec3.fromValues(objectData.position[0], objectData.position[1], objectData.position[2]);
 
+
+
             const drawObject = {
                 programInfo: thisProgramInfo,
                 bufferInfo: bufferInfo,
@@ -255,11 +266,14 @@ class RayTraceConfigReader {
                     u_texture: imageTexture,
                     u_specular_texture: getWhiteTexture(this.gl),
                     u_bump_texture: getWhiteTexture(this.gl),
-                    u_model_matrix: mat4.translate(mat4.create(), mat4.create(), position)
+                    u_model_matrix: mat4.translate(mat4.create(), mat4.create(), position),
+                    u_is_skybox: objectData.material == MaterialType.SPECULAR ? 1 : 0,
+                    u_skybox: getDefaultSkyBox(this.gl),
                 }
             }
 
             if(objectData.material == MaterialType.REFRACTIVE) {
+
                 oitDrawObjects.push(drawObject);
             } else {
                 normalDrawObjects.push(drawObject);

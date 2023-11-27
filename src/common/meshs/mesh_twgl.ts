@@ -3,6 +3,7 @@ import * as twgl from 'twgl.js'
 
 import { createWebGLTextureFromThreeMesh, createTWGLVerticesFromThreeMesh,  } from './mesh_three';
 import { mat4, vec3 } from 'gl-matrix';
+import { getDefaultSkyBox } from '../utils/twgl_utils';
 
 interface TWGLMesh {
     verticesArray: { [key: string]: twgl.primitives.TypedArray };
@@ -65,7 +66,7 @@ async function createTWGLMeshesFromThreeMeshes(meshes: THREE.Mesh[], gl: WebGL2R
     return twglMeshes;
 }
 
-function createDrawObjectFromTWGLMesh(mesh: TWGLMesh, programInfo: twgl.ProgramInfo, position: vec3 = vec3.create()) {
+function createDrawObjectFromTWGLMesh(mesh: TWGLMesh, programInfo: twgl.ProgramInfo, position: vec3, gl: WebGL2RenderingContext) {
     return {
         programInfo: programInfo,
         bufferInfo: mesh.bufferInfo,
@@ -74,14 +75,16 @@ function createDrawObjectFromTWGLMesh(mesh: TWGLMesh, programInfo: twgl.ProgramI
             u_specular_texture: mesh.specularTexture,
             u_bump_texture: mesh.bumpTexture,
             u_model_matrix: mat4.fromTranslation(mat4.create(), position),
+            u_is_skybox: false,
+            u_skybox: getDefaultSkyBox(gl),
         }
     }
 }
 
-function createDrawObjectsFromTWGLMeshes(meshes: TWGLMesh[], programInfo: twgl.ProgramInfo, position: vec3 = vec3.create()) {
+function createDrawObjectsFromTWGLMeshes(meshes: TWGLMesh[], programInfo: twgl.ProgramInfo, position: vec3, gl: WebGL2RenderingContext) {
     const drawObjects = [];
     for (let i = 0; i < meshes.length; i++) {
-        drawObjects.push(createDrawObjectFromTWGLMesh(meshes[i], programInfo, position));
+        drawObjects.push(createDrawObjectFromTWGLMesh(meshes[i], programInfo, position, gl));
     }
     return drawObjects;
 }
@@ -90,4 +93,5 @@ export {
     TWGLMesh,
     createTWGLMeshesFromThreeMeshes,
     createDrawObjectsFromTWGLMeshes,
+    addRandomColor
 }

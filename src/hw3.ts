@@ -11,20 +11,8 @@ import RayTraceWorker from './common/workers/ray_trace.worker';
 
 function do_raytracing(rayTracer: RayTracer, percent_callback: (percent: number) => void = (percent: number) => {}) {
 
-    const worker = new RayTraceWorker('');
-    worker.postMessage('主线程对子线程说:你老婆真棒');
-    worker.onmessage = function (evt: any) {
-        // 主线程收到工作线程的消息
-        console.log('主线程收到', evt)
-    };
-    worker.addEventListener('error', function (e: any) {
-        console.log('MAIN: ', 'ERROR', e);
-        console.log('filename:' + e.filename + '-message:' + e.message + '-lineno:' + e.lineno);
-    });
-
-    return
-
-    const imageData = rayTracer.do_raytracing(200, 200, (percent: number) => {
+    console.log(rayTracer.scene)
+    const imageData = rayTracer.do_raytracing(100, 100, (percent: number) => {
         percent_callback(percent);
     });
 

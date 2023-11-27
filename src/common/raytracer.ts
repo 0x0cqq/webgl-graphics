@@ -1,4 +1,4 @@
-import { vec3, vec2, vec4, glMatrix } from "gl-matrix";
+import { vec3, vec2, vec4, mat4 } from "gl-matrix";
 import * as THREE from 'three';
 
 import { Camera } from "./camera";
@@ -172,7 +172,9 @@ class TriangleFace {
 
 }
 
-export class Mesh {
+class Mesh {
+    model_matrix: mat4;
+
     vertices: vec3[];
     normal: vec3[];
     texcoord: vec2[];
@@ -182,7 +184,8 @@ export class Mesh {
     specular_image: ImageData;
     bump_image: ImageData;
 
-    constructor(vertices: vec3[], normal: vec3[], texcoord: vec2[], diffuse_image: ImageData, specular_image: ImageData, bump_image: ImageData) {
+    constructor(position: vec3, vertices: vec3[], normal: vec3[], texcoord: vec2[], diffuse_image: ImageData, specular_image: ImageData, bump_image: ImageData) {
+        this.model_matrix = mat4.fromTranslation(mat4.create(), position);
         this.vertices = vertices;
         this.normal = normal;
         this.texcoord = texcoord;
@@ -194,8 +197,9 @@ export class Mesh {
         this.min = vec3.fromValues(Infinity, Infinity, Infinity);
         this.max = vec3.fromValues(-Infinity, -Infinity, -Infinity);
         for (const vertex of vertices) {
-            vec3.min(this.min, this.min, vertex);
-            vec3.max(this.max, this.max, vertex);
+            const transformed_matrix = vec3.transformMat4(vec3.create(), vertex, this.model_matrix);
+            vec3.min(this.min, this.min, transformed_matrix);
+            vec3.max(this.max, this.max, transformed_matrix);
         }
 
     }
@@ -237,12 +241,17 @@ export class Mesh {
         return false;
     }
     fetch_face(num: number): TriangleFace {
-        return new TriangleFace(this, num);
+        const face = new TriangleFace(this, num);
+        for(let i = 0; i < 3; i++) {
+            face.v[i] = vec3.transformMat4(vec3.create(), face.v[i], this.model_matrix);
+            face.n[i] = vec3.transformMat4(vec3.create(), face.n[i], this.model_matrix);
+        }
+        return face;
     }
 }
 
 
-async function createRayTraceMeshFromThreeMesh(three_mesh: THREE.Mesh) {
+async function createRayTraceMeshFromThreeMesh(three_mesh: THREE.Mesh, position: vec3) {
     // 1. get the vertices, normals, texcoords
     const v = createTWGLVerticesFromThreeMesh(three_mesh);
     // 2. get the images
@@ -260,13 +269,13 @@ async function createRayTraceMeshFromThreeMesh(three_mesh: THREE.Mesh) {
         normals.push(vec3.fromValues(v.normal[i * 3], v.normal[i * 3 + 1], v.normal[i * 3 + 2]));
         texcoords.push(vec2.fromValues(v.texcoord[i * 2], v.texcoord[i * 2 + 1]));
     }
-    const mesh = new Mesh(vertices, normals, texcoords, image.diffuse_texture, image.specular_texture, image.bump_texture);
+    const mesh = new Mesh(position, vertices, normals, texcoords, image.diffuse_texture, image.specular_texture, image.bump_texture);
     return mesh;
 }
 
 
 
-export class Scene {
+class Scene {
     camera: Camera;
     lightPosition: vec3;
     // the faces to be intersected
@@ -277,9 +286,9 @@ export class Scene {
         this.objects = [];
     }
     // add a mesh object to the scene
-    async addThreeMesh(three_mesh: THREE.Mesh) {
+    async addThreeMesh(three_mesh: THREE.Mesh, position: vec3) {
         console.log('add mesh', three_mesh)
-        const mesh = await createRayTraceMeshFromThreeMesh(three_mesh);
+        const mesh = await createRayTraceMeshFromThreeMesh(three_mesh, position);
         this.objects.push(mesh);
     }
 
@@ -312,7 +321,7 @@ export class Scene {
     }
 }
 
-export class RayTracer {
+class RayTracer {
     scene: Scene;
     // depth of the ray tracing(max reflect/refract times)
     depth: number;
@@ -380,14 +389,21 @@ export class RayTracer {
         return total_color;
     }
 
+    pack() {
+        // jsonify the whole ray tracer
+
+
+    }
+
     do_raytracing(width: number, height: number, callback: (percent: number) => void): ImageData {
-
-
         // too big, will refuse to run
         if (width * height > 1000000) {
             alert("too big width & height")
             return new ImageData(0, 0);
         }
+
+        alert('开始光线追踪。这可能会很慢，而且UI界面会卡死，请耐心等待。')
+
         // create a two dimensional array to store the color temporarily in float32
         const color_buffer = new Float32Array(width * height * 4);
         // initialize the color buffer
@@ -425,4 +441,10 @@ export class RayTracer {
         }
         return image;
     }
+}
+
+export {
+    Mesh,
+    Scene,
+    RayTracer
 }

@@ -10,10 +10,14 @@ uniform mat4 u_view_proj;
 uniform vec3 u_eye_position;
 uniform vec3 u_light_position;
 
+uniform bool u_is_skybox;
+
 // this should be added by the user in the inner render function
 uniform sampler2D u_texture;
 uniform sampler2D u_specular;
 uniform sampler2D u_bump;
+
+uniform samplerCube u_skybox;
 
 in vec3 v_position;
 in vec2 v_texcoord;
@@ -27,7 +31,17 @@ void main() {
     vec3 normal = normalize(v_normal.xyz);
     vec2 texcoord = v_texcoord;
 
-    vec4 base_color = v_color * texture(u_texture, texcoord);
+    vec3 I = normalize(v_position - v_normal);
+    vec3 Reflected = reflect(I, normalize(v_normal));
+
+    vec4 base_color = v_color;
+    
+    if(u_is_skybox) {
+        base_color = base_color * vec4(texture(u_skybox, Reflected).rgb, 1.0);   
+    } else {
+        base_color = base_color * texture(u_texture, texcoord);
+    }
+
     vec4 base_specular_color = texture(u_specular, texcoord);
 
     vec3 eye_direction = normalize(u_eye_position - position);

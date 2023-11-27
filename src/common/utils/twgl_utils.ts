@@ -1,5 +1,21 @@
 import * as twgl from 'twgl.js';
 
+function getDefaultSkyBox(gl: WebGL2RenderingContext) {
+    return twgl.createTexture(gl, {
+        target: gl.TEXTURE_CUBE_MAP,
+        src: [
+            "./textures/posx.jpg",
+            "./textures/negx.jpg",
+            "./textures/posy.jpg",
+            "./textures/negy.jpg",
+            "./textures/posz.jpg",
+            "./textures/negz.jpg",
+        ],
+        min: gl.LINEAR_MIPMAP_LINEAR,
+        crossOrigin: ""
+    })
+}
+
 function getWhiteTexture(gl: WebGL2RenderingContext, color: number[] = [255, 255, 255, 255]) {
     return twgl.createTexture(gl, {
         minMag: gl.NEAREST,
@@ -28,6 +44,7 @@ function myDrawObjectList(gl: WebGL2RenderingContext, objectsToDraw: twgl.DrawOb
 }
 
 export {
+    getDefaultSkyBox,
     getWhiteTexture,
     getWhiteImageData,
     myDrawObjectList,
