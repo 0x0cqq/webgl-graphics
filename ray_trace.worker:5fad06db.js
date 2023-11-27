@@ -1,1 +1,0 @@
-(()=>{"use strict";(()=>{const e=self;e.addEventListener("message",(s=>{setTimeout((()=>e.postMessage({foo:"boo"})),5e3)}))})()})();
