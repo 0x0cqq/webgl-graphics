@@ -1,1 +1,0 @@
-作业 {x} 的文档在 /doc/report{X}/report{X}.md 和 /doc/report{X}/report{X}.pdf

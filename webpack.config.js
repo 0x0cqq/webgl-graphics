@@ -12,6 +12,16 @@ module.exports = {
   module: {
     rules: [
       {
+        test: /\.worker\.ts$/, // ts结尾,这也很重要
+        use: {
+            loader: 'worker-loader',
+            options: {
+                filename: '[name]:[fullhash:8].js',// 打包后chunk的名称
+                inline: "fallback", // 开启内联模式,免得爆缺少标签或者跨域的错误
+            }
+        }
+      },
+      {
         test: /\.tsx?$/,
         use: 'ts-loader',
         exclude: /node_modules/,
@@ -43,6 +53,7 @@ module.exports = {
   output: {
     filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
+    globalObject: 'this',
   },
   plugins: [
     new CopyPlugin({

@@ -7,6 +7,7 @@ import frameBufferToScreenFragmentGuass from '../shaders/buffer/framebuffer_guas
 import frameBufferToScreenFragmentVignette from '../shaders/buffer/framebuffer_vignette.fs'
 
 import * as twgl from 'twgl.js'
+import { myDrawObjectList } from './utils/twgl_utils'
 
 export enum FrameBufferType {
     Raw,
@@ -27,7 +28,6 @@ const fragments = [
 export class FramebufferExporter {
     programInfo: twgl.ProgramInfo;
     gl: WebGL2RenderingContext;
-    quadVAO: WebGLVertexArrayObject;
     quadBufferInfo: twgl.BufferInfo;
     framebufferInfo: twgl.FramebufferInfo;
     currentType: FrameBufferType = FrameBufferType.Raw;
@@ -36,13 +36,11 @@ export class FramebufferExporter {
         this.gl = gl;
         this.programInfo = twgl.createProgramInfo(gl, [frameBufferToScreenVertex, fragments[type]]);
         this.quadBufferInfo = twgl.primitives.createXYQuadBufferInfo(gl);
-        this.quadVAO = twgl.createVAOFromBufferInfo(gl, this.programInfo, this.quadBufferInfo)!;
         this.framebufferInfo = frameBuffer;
     }
 
     recreate(type: FrameBufferType = FrameBufferType.Raw) {
         this.programInfo = twgl.createProgramInfo(this.gl, [frameBufferToScreenVertex, fragments[type]]);
-        this.quadVAO = twgl.createVAOFromBufferInfo(this.gl, this.programInfo, this.quadBufferInfo)!;
         this.currentType = type;
     }
 
@@ -59,18 +57,17 @@ export class FramebufferExporter {
         this.gl.disable(this.gl.DEPTH_TEST);
         this.gl.disable(this.gl.BLEND);
         this.gl.useProgram(this.programInfo.program);
-        // bind vertex array object
-        this.gl.bindVertexArray(this.quadVAO);
 
         const uniforms = {
             u_screen: this.framebufferInfo.attachments[0],
         };
 
-        // use framebufferInfo.attachments[0] as texture
-        twgl.setUniforms(this.programInfo, uniforms);
-
-        // draw
-        twgl.drawBufferInfo(this.gl, this.quadBufferInfo);
+        const drawObject = {
+            programInfo: this.programInfo,
+            bufferInfo: this.quadBufferInfo,
+            uniforms: uniforms,
+        }
+        myDrawObjectList(this.gl, [drawObject]);
     }
 
 }

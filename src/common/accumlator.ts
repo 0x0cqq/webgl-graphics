@@ -13,6 +13,7 @@ import { Camera } from './camera';
 import { mat4, vec3, vec4 } from 'gl-matrix';
 
 import { FramebufferExporter } from './frame_buffer'
+import { myDrawObjectList } from './utils/twgl_utils'
 
 
 
@@ -147,7 +148,6 @@ export class AccumlatorExporter {
 
     // This is the quad buffer from the frame buffer to the screen
     renderer: twgl.ProgramInfo;
-    quadVAO: WebGLVertexArrayObject;
     quadBufferInfo: twgl.BufferInfo;
     accumlator: Accumlator;
     
@@ -157,8 +157,6 @@ export class AccumlatorExporter {
         this.renderer = twgl.createProgramInfo(gl, [renderVertexShaderSource, renderFragmentShaderSource]);
 
         this.quadBufferInfo = twgl.primitives.createXYQuadBufferInfo(gl);
-        this.quadVAO = twgl.createVAOFromBufferInfo(gl, this.renderer, this.quadBufferInfo)!;
-
         this.accumlator = accumlator;
 
         // create a framebuffer exporter for normal render
@@ -171,31 +169,31 @@ export class AccumlatorExporter {
         twgl.bindFramebufferInfo(this.gl, null);
         twgl.resizeCanvasToDisplaySize(canvas);
         
+        this.gl.useProgram(this.renderer.program);
         this.gl.viewport(0, 0, canvas.width, canvas.height);
         this.gl.depthMask(true);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
 
-        // render the normal part
+        // // render the normal part
         this.normal_exporter.render(canvas, false);
         
         // render the accumlator part
         const accum_framebuffer = this.accumlator.oitFramebufferInfo;
         this.gl.disable(this.gl.DEPTH_TEST);
-        this.gl.useProgram(this.renderer.program);
         this.gl.enable(this.gl.BLEND);
         this.gl.blendFunc(this.gl.ONE, this.gl.ONE_MINUS_SRC_ALPHA);
         
-        // bind vertex array object
-        this.gl.bindVertexArray(this.quadVAO);
-
         const uniforms = {
             u_accumulate: accum_framebuffer.attachments[0],
             u_accumulate_alpha: accum_framebuffer.attachments[1],
         };
 
-        twgl.setUniforms(this.renderer, uniforms);
-
-        twgl.drawBufferInfo(this.gl, this.quadBufferInfo);
+        const drawObject = {
+            programInfo: this.renderer,
+            bufferInfo: this.quadBufferInfo,
+            uniforms: uniforms,
+        };
+        myDrawObjectList(this.gl, [drawObject]);
     }
 
 }

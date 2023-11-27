@@ -1,11 +1,14 @@
 import { vec3, vec2, vec4, glMatrix } from "gl-matrix";
+import * as THREE from 'three';
+
 import { Camera } from "./camera";
 import { deg_to_rad } from "./utils/math_utils";
-import * as THREE from 'three';
 import { createTWGLVerticesFromThreeMesh, createImageDataFromThreeMesh } from './meshs/mesh_three';
 
+
+
 function checkUV(uv: vec2): boolean {
-    if(uv[0] >= 0 && uv[0] <= 1 && uv[1] >= 0 && uv[1] <= 1) {
+    if (uv[0] >= 0 && uv[0] <= 1 && uv[1] >= 0 && uv[1] <= 1) {
         return true;
     } else {
         console.error("uv is not in [0, 1] x [0, 1]", uv);
@@ -26,18 +29,18 @@ function fetchPixelFromImageData(image: ImageData, uv: vec2): vec4 {
     // if(!checkUV(uv)) {
     //     return vec4.fromValues(255, 0, 0, 255);
     // }
-    const u = repeat(uv[0]); 
+    const u = repeat(uv[0]);
     const v = repeat(uv[1]);
     const x = Math.floor(u * image.width);
     const y = Math.floor((v) * image.height);
     const index = (y * image.width + x) * 4;
-    return vec4.fromValues(image.data[index], image.data[index + 1], image.data[index + 2], image.data[index + 3]);   
+    return vec4.fromValues(image.data[index], image.data[index + 1], image.data[index + 2], image.data[index + 3]);
 }
 
 // uv is in [0, 1] x [0, 1]
 // it's calculated by u = x / width, v = y / height
 function getRayDirectionFromUV(uv: vec2, size: vec2, camera: Camera): vec3 {
-    if(!checkUV(uv)) {
+    if (!checkUV(uv)) {
         return vec3.fromValues(0, 0, 0);
     }
     // fov, this should be in degree
@@ -49,7 +52,7 @@ function getRayDirectionFromUV(uv: vec2, size: vec2, camera: Camera): vec3 {
     const front_axis = vec3.clone(camera.front_axis);
     // the bias of the ray in x direction and y direction
     // 这里 fov 默认是 y 方向的，x 方向的 fov 需要根据宽高比来计算
-    const bias_x = (uv[0] - 0.5), fov_x = fov * size[0] / size[1]; 
+    const bias_x = (uv[0] - 0.5), fov_x = fov * size[0] / size[1];
     const bias_y = - (uv[1] - 0.5), fov_y = fov;
     const theta_x = Math.atan(bias_x / 2 * Math.tan(fov_x / 2));
     const theta_y = Math.atan(bias_y / 2 * Math.tan(fov_y / 2));
@@ -105,7 +108,7 @@ class TriangleFace {
      * @param ray 光线
      * @returns bool 是否相交，t 相交距离，b1 b2 （相对于v0的）重心坐标
      */
-    is_intersected_with(ray: Ray): [boolean, vec3, number, number, number] { 
+    is_intersected_with(ray: Ray): [boolean, vec3, number, number, number] {
         // Moller-Trumbore algorithm
         // from: https://zhuanlan.zhihu.com/p/451582864
 
@@ -158,7 +161,7 @@ class TriangleFace {
         vec4.scaleAndAdd(result, result, v3, 1 - b1 - b2);
         return result;
     }
-     
+
     normal_interpolated(b1: number, b2: number): vec3 {
         return this.vec3_interpolated(b1, b2, this.n[0], this.n[1], this.n[2]);
     }
@@ -190,43 +193,43 @@ export class Mesh {
         // calculate the min and max
         this.min = vec3.fromValues(Infinity, Infinity, Infinity);
         this.max = vec3.fromValues(-Infinity, -Infinity, -Infinity);
-        for(const vertex of vertices) {
+        for (const vertex of vertices) {
             vec3.min(this.min, this.min, vertex);
             vec3.max(this.max, this.max, vertex);
         }
-        
+
     }
 
     is_intersected_with_box(ray: Ray): boolean {
         // https://zhuanlan.zhihu.com/p/610258258
         // 首先判断是否在内部，内部一定相交
-        if(ray.origin[0] >= this.min[0] && ray.origin[0] <= this.max[0] && ray.origin[1] >= this.min[1] && ray.origin[1] <= this.max[1] && ray.origin[2] >= this.min[2] && ray.origin[2] <= this.max[2]) {
+        if (ray.origin[0] >= this.min[0] && ray.origin[0] <= this.max[0] && ray.origin[1] >= this.min[1] && ray.origin[1] <= this.max[1] && ray.origin[2] >= this.min[2] && ray.origin[2] <= this.max[2]) {
             return true;
         }
         // 分别判断射线和各轴近面的相交情况 
-        for(let axis = 0; axis < 3; axis++) {
+        for (let axis = 0; axis < 3; axis++) {
             let t = 0.0;
-            if(Math.abs(ray.direction[axis]) > 1e-7) {
-                if(ray.direction[axis] > 0) {
+            if (Math.abs(ray.direction[axis]) > 1e-7) {
+                if (ray.direction[axis] > 0) {
                     t = (this.min[axis] - ray.origin[axis]) / ray.direction[axis];
                 } else {
                     t = (this.max[axis] - ray.origin[axis]) / ray.direction[axis];
                 }
             }
             // 判断是否相交
-            if(t > 0) {
+            if (t > 0) {
                 // 判断是否在面内部
                 let inside = true;
-                for(let i = 0; i < 3; i++) {
-                    if(i !== axis) { // 只考虑其他的轴
+                for (let i = 0; i < 3; i++) {
+                    if (i !== axis) { // 只考虑其他的轴
                         const p = ray.origin[i] + t * ray.direction[i];
-                        if(p < this.min[i] || p > this.max[i]) {
+                        if (p < this.min[i] || p > this.max[i]) {
                             inside = false;
                             break;
                         }
                     }
                 }
-                if(inside) {
+                if (inside) {
                     return true;
                 }
             }
@@ -244,7 +247,7 @@ async function createRayTraceMeshFromThreeMesh(three_mesh: THREE.Mesh) {
     const v = createTWGLVerticesFromThreeMesh(three_mesh);
     // 2. get the images
     const image = await createImageDataFromThreeMesh(three_mesh);
-    
+
     console.log('v', v, 'image', image)
 
     // 3. create the mesh
@@ -252,7 +255,7 @@ async function createRayTraceMeshFromThreeMesh(three_mesh: THREE.Mesh) {
     const vertices: vec3[] = []
     const normals: vec3[] = []
     const texcoords: vec2[] = []
-    for(let i = 0; i < n_elements; i++) {
+    for (let i = 0; i < n_elements; i++) {
         vertices.push(vec3.fromValues(v.position[i * 3], v.position[i * 3 + 1], v.position[i * 3 + 2]));
         normals.push(vec3.fromValues(v.normal[i * 3], v.normal[i * 3 + 1], v.normal[i * 3 + 2]));
         texcoords.push(vec2.fromValues(v.texcoord[i * 2], v.texcoord[i * 2 + 1]));
@@ -283,7 +286,7 @@ export class Scene {
     addMesh(twgl_mesh: Mesh) {
         this.objects.push(twgl_mesh);
     }
-    
+
     // return null if no intersection
     // else return the nearest intersection face
     find_nearest_intersection(ray: Ray): (TriangleFace | null) {
@@ -291,12 +294,12 @@ export class Scene {
         let n_t = Infinity;
         for (const mesh of this.objects) {
             // 先检测是否和包围盒相交
-            if(!mesh.is_intersected_with_box(ray)) {
+            if (!mesh.is_intersected_with_box(ray)) {
                 continue;
             }
             // 遍历所有面片
             const n_faces = mesh.vertices.length / 3;
-            for(let face = 0; face < n_faces; face++) {
+            for (let face = 0; face < n_faces; face++) {
                 const this_face = mesh.fetch_face(face);
                 const [is_intersected, p, t, b1, b2] = this_face.is_intersected_with(ray);
                 if (is_intersected && t < n_t) {
@@ -324,7 +327,7 @@ export class RayTracer {
     // return the color perceived by the ray
     trace(ray: Ray): vec3 {
         let total_color = vec3.fromValues(0, 0, 0);
-        for(let i = 1; i <= this.depth; i++) {
+        for (let i = 1; i <= this.depth; i++) {
             // the i times reflected/refracted ray
             const nearest_face = this.scene.find_nearest_intersection(ray);
             if (nearest_face === null) {
@@ -344,11 +347,11 @@ export class RayTracer {
 
                 // const bump_color = fetchPixelFromImageData(nearest_face.mesh.bump_image, this_texcoord);
                 // // // modify the normal by bump mapping (TODO)
-                
+
                 // // // get the light direction
                 const light_direction = vec3.sub(vec3.create(), this.scene.lightPosition, p);
                 vec3.normalize(light_direction, light_direction);
-                
+
                 // // get the reflect direction
                 const reflect_direction = getReflectedRayDirection(ray.direction, normal);
                 const light_reflect_direction = getReflectedRayDirection(light_direction, normal);
@@ -366,7 +369,7 @@ export class RayTracer {
                 // // update the ray
                 // ray.origin = p;
                 // ray.direction = reflect_direction;
-                
+
                 // console.log("intersected")
                 // if(this_place_color[3] <= 10) {
                 //     return vec3.fromValues(255, 0, 0);
@@ -376,7 +379,10 @@ export class RayTracer {
         }
         return total_color;
     }
+
     do_raytracing(width: number, height: number, callback: (percent: number) => void): ImageData {
+
+
         // too big, will refuse to run
         if (width * height > 1000000) {
             alert("too big width & height")
@@ -390,9 +396,9 @@ export class RayTracer {
         }
         // do ray tracing
         let total_work = 0, target_work = width * height * this.sample_times;
-        for(let k = 0; k < this.sample_times; k++) {
+        for (let k = 0; k < this.sample_times; k++) {
             for (let i = 0; i < width; i++) {
-                for(let j = 0; j < height; j++) {
+                for (let j = 0; j < height; j++) {
                     const origin = this.scene.camera.get_eye_position()
                     const direction = getRayDirectionFromUV([i / width, j / height], [width, height], this.scene.camera);
                     const ray = new Ray(origin, direction);
@@ -404,7 +410,7 @@ export class RayTracer {
                     color_buffer[index + 2] = pixel[2];
                     color_buffer[index + 3] = 255;
                     total_work += 1;
-                    if(total_work % 100 === 0) {
+                    if (total_work % 100 === 0) {
                         console.log(total_work / target_work)
                         callback(total_work / target_work);
                     }

@@ -1,6 +1,6 @@
 {
     "camera": {
-        "position": [0, 0, 20],
+        "position": [0, 0, 30],
         "angle": [-90, 0],
         "zoom": 45
     },
@@ -16,7 +16,7 @@
             }
         },
         {
-            "position": [5, 0, 0],
+            "position": [10, 0, 0],
             "shape": 1,
             "material": 1,
             "texture": {
@@ -24,12 +24,12 @@
             }
         },
         {
-            "position": [0, 0, 5],
+            "position": [-10, 0, 0],
             "shape": 2,
             "material": 2,
             "texture": {
                 "type": 1,
-                "file": "./textures/wood.jpg"
+                "file": "./textures/chrome.png"
             }
         }
     ]

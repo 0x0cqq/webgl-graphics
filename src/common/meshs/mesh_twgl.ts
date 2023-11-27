@@ -2,6 +2,7 @@ import * as twgl from 'twgl.js'
 
 
 import { createWebGLTextureFromThreeMesh, createTWGLVerticesFromThreeMesh,  } from './mesh_three';
+import { mat4, vec3 } from 'gl-matrix';
 
 interface TWGLMesh {
     verticesArray: { [key: string]: twgl.primitives.TypedArray };
@@ -64,7 +65,7 @@ async function createTWGLMeshesFromThreeMeshes(meshes: THREE.Mesh[], gl: WebGL2R
     return twglMeshes;
 }
 
-function createDrawObjectFromTWGLMesh(mesh: TWGLMesh, programInfo: twgl.ProgramInfo) {
+function createDrawObjectFromTWGLMesh(mesh: TWGLMesh, programInfo: twgl.ProgramInfo, position: vec3 = vec3.create()) {
     return {
         programInfo: programInfo,
         bufferInfo: mesh.bufferInfo,
@@ -72,14 +73,15 @@ function createDrawObjectFromTWGLMesh(mesh: TWGLMesh, programInfo: twgl.ProgramI
             u_texture: mesh.diffuseTexture,
             u_specular_texture: mesh.specularTexture,
             u_bump_texture: mesh.bumpTexture,
+            u_model_matrix: mat4.fromTranslation(mat4.create(), position),
         }
     }
 }
 
-function createDrawObjectsFromTWGLMeshes(meshes: TWGLMesh[], programInfo: twgl.ProgramInfo) {
+function createDrawObjectsFromTWGLMeshes(meshes: TWGLMesh[], programInfo: twgl.ProgramInfo, position: vec3 = vec3.create()) {
     const drawObjects = [];
     for (let i = 0; i < meshes.length; i++) {
-        drawObjects.push(createDrawObjectFromTWGLMesh(meshes[i], programInfo));
+        drawObjects.push(createDrawObjectFromTWGLMesh(meshes[i], programInfo, position));
     }
     return drawObjects;
 }

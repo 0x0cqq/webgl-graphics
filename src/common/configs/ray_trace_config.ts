@@ -1,11 +1,11 @@
 // 要求能配置模型的位置、纹理和材质、点光源的位置。
 
-import { vec2, vec3 } from "gl-matrix";
+import { mat4, vec2, vec3 } from "gl-matrix";
 import { CameraData } from "./config";
 import { Camera } from "../camera";
 import { Mesh, Scene } from "../raytracer";
 import { createThreeMeshesFromFileName } from '../meshs/mesh_three';
-import { TWGLMesh } from "../meshs/mesh_twgl";
+import { TWGLMesh, createDrawObjectsFromTWGLMeshes, createTWGLMeshesFromThreeMeshes } from "../meshs/mesh_twgl";
 import * as THREE from "three";
 import * as twgl from "twgl.js";
 import { getWhiteImageData, getWhiteTexture } from "../utils/twgl_utils";
@@ -197,7 +197,7 @@ class RayTraceConfigReader {
             return mesh;
         }
     }
-    async set_scene(raytraceConfig: SceneData, scene: Scene) {
+    async setScene(raytraceConfig: SceneData, scene: Scene) {
         const camera = scene.camera;
         this.set_camera(raytraceConfig.camera, camera);
 
@@ -208,17 +208,81 @@ class RayTraceConfigReader {
             const meshes = await this.createMeshesFromRayTraceObjectData(object);
             for(const mesh of meshes) {
                 // if type == THREE.Mesh
-                if(mesh instanceof THREE.Mesh) {
-                    await scene.addThreeMesh(mesh);
-                } 
-                else if (mesh instanceof Mesh) {
+
+                if (mesh instanceof Mesh) {
                     scene.addMesh(mesh);
                 } else {
-                    console.error("Unknown mesh type");
+                    await scene.addThreeMesh(mesh);
                 }
             }
         }
+    }
 
+    
+
+    async createDrawObjectFromObjectData(objectData: RayTraceObjectData, normalProgramInfo: twgl.ProgramInfo, oitProgramInfo: twgl.ProgramInfo) {
+        const normalDrawObjects: twgl.DrawObject[] = []; // for normal objects 
+        const oitDrawObjects: twgl.DrawObject[] = []; // for all oit objects
+
+        if(objectData.texture.type == TextureType.FILE) { // read from obj/mtl file
+            const three_meshes = await createThreeMeshesFromFileName(objectData.texture.file!, this.gl);
+            const twgl_meshes = await createTWGLMeshesFromThreeMeshes(three_meshes, this.gl);
+            const drawObjects = createDrawObjectsFromTWGLMeshes(twgl_meshes, normalProgramInfo);
+            for(const drawObject of drawObjects) {
+                normalDrawObjects.push(drawObject);
+            }
+        } else {
+            const vertices = this.getVerticesFromType(objectData.shape);
+            const imageTexture = await this.createWebGLTextureFromTextureData(objectData.texture);
+
+            const getProgramInfo = () => {
+                if(objectData.material == MaterialType.REFRACTIVE) {
+                    return oitProgramInfo;
+                } else {
+                    return normalProgramInfo;
+                }
+            }
+
+            const thisProgramInfo = getProgramInfo();
+            const bufferInfo = twgl.createBufferInfoFromArrays(this.gl, vertices);
+
+            const position = vec3.fromValues(objectData.position[0], objectData.position[1], objectData.position[2]);
+
+            const drawObject = {
+                programInfo: thisProgramInfo,
+                bufferInfo: bufferInfo,
+                uniforms: {
+                    u_texture: imageTexture,
+                    u_specular_texture: getWhiteTexture(this.gl),
+                    u_bump_texture: getWhiteTexture(this.gl),
+                    u_model_matrix: mat4.translate(mat4.create(), mat4.create(), position)
+                }
+            }
+
+            if(objectData.material == MaterialType.REFRACTIVE) {
+                oitDrawObjects.push(drawObject);
+            } else {
+                normalDrawObjects.push(drawObject);
+            }
+        }
+        return [normalDrawObjects, oitDrawObjects];
+    }
+
+    async setDrawObjects(raytraceConfig: SceneData, normalProgramInfo: twgl.ProgramInfo, oitProgramInfo: twgl.ProgramInfo) {
+        const normalDrawObjects: twgl.DrawObject[] = []; // for normal objects 
+        const oitDrawObjects: twgl.DrawObject[] = []; // for all oit objects
+
+        for(const object of raytraceConfig.objects) {
+            const [normalDrawObjectsFromObject, oitDrawObjectsFromObject] = await this.createDrawObjectFromObjectData(object, normalProgramInfo, oitProgramInfo);
+            for(const drawObject of normalDrawObjectsFromObject) {
+                normalDrawObjects.push(drawObject);
+            }
+            for(const drawObject of oitDrawObjectsFromObject) {
+                oitDrawObjects.push(drawObject);
+            }
+        }
+
+        return [normalDrawObjects, oitDrawObjects];
     }
 
 }

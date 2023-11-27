@@ -6,8 +6,24 @@ import { Accumlator, AccumlatorExporter } from './common/accumlator';
 import { RayTracer, Scene } from './common/raytracer';
 import { RayTraceConfigReader } from './common/configs/ray_trace_config';
 import { myDrawObjectList } from './common/utils/twgl_utils';
+import RayTraceWorker from './common/workers/ray_trace.worker';
+
 
 function do_raytracing(rayTracer: RayTracer, percent_callback: (percent: number) => void = (percent: number) => {}) {
+
+    const worker = new RayTraceWorker('');
+    worker.postMessage('主线程对子线程说:你老婆真棒');
+    worker.onmessage = function (evt: any) {
+        // 主线程收到工作线程的消息
+        console.log('主线程收到', evt)
+    };
+    worker.addEventListener('error', function (e: any) {
+        console.log('MAIN: ', 'ERROR', e);
+        console.log('filename:' + e.filename + '-message:' + e.message + '-lineno:' + e.lineno);
+    });
+
+    return
+
     const imageData = rayTracer.do_raytracing(200, 200, (percent: number) => {
         percent_callback(percent);
     });
@@ -72,7 +88,10 @@ async function main() {
         const config_file = config_file_input.files[0];
         const config_data = await config_reader.load(config_file)
         console.log(config_data);
-        config_reader.set_scene(config_data, scene)
+        config_reader.setScene(config_data, scene)
+        const [o1, o2] = await config_reader.setDrawObjects(config_data, accumlator.normalprogramInfo, accumlator.oitProgramInfo);
+        normalDrawObjects = o1;
+        oitDrawObjects = o2;
     });
 
 
@@ -105,17 +124,10 @@ async function main() {
         accumlator.render(canvas, camera, lightPosition,
             // normal render
             (programInfo: twgl.ProgramInfo) => {
-                twgl.setUniforms(programInfo, {
-                    u_model_matrix: mat4.create(),
-                });
                 myDrawObjectList(gl, normalDrawObjects);
-
             },
             // oit render
             (programInfo: twgl.ProgramInfo) => {
-                twgl.setUniforms(programInfo, {
-                    u_model_matrix: mat4.create(),
-                });
                 myDrawObjectList(gl, oitDrawObjects);
             });
 

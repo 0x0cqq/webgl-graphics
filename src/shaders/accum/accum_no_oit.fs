@@ -13,6 +13,7 @@ uniform vec3 u_light_position;
 // this should be added by the user in the inner render function
 uniform sampler2D u_texture;
 uniform sampler2D u_specular;
+uniform sampler2D u_bump;
 
 in vec3 v_position;
 in vec2 v_texcoord;
