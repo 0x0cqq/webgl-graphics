@@ -1,9 +1,9 @@
 import { vec2, vec3 } from "gl-matrix";
-import { Camera } from "./camera";
-import { CollisionTest } from "./collision_test";
-import { BasicObject } from "./objects/basic_object";
-import { Ball } from "./objects/ball";
-import { Cube } from "./objects/cube";
+import { Camera } from "../camera";
+import { CollisionTest } from "../collision_test";
+import { BasicObject } from "../objects/basic_object";
+import { Ball } from "../objects/ball";
+import { Cube } from "../objects/cube";
 
 import * as twgl from "twgl.js";
 

@@ -1,6 +1,6 @@
 import * as twgl from "twgl.js";
 
-import { DrawObject } from "../draw_object";
+import { DrawObject } from "./draw_object";
 import { Camera } from "../camera";
 import { vec2, vec3, vec4 } from "gl-matrix";
 

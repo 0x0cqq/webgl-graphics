@@ -10,6 +10,11 @@
     <br/>
     <div style="display: flex; justify-content: space-around; align-items: center;">
         <div>
+            <label for="config">上传配置文件</label>
+            <input type="file" id="config" name="config" accept="application/json" single/> 
+            <button id="load_config">加载！</button>
+        </div>
+        <div>
             <button id="render" style="width: 100px; height: min-content;">渲染</button>
             <p>当前进度：<span id="progress"></span></p>
         </div>

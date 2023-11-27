@@ -1,23 +1,23 @@
 import * as twgl from 'twgl.js';
 
-export function getWhiteTexture(gl: WebGL2RenderingContext) {
+function getWhiteTexture(gl: WebGL2RenderingContext, color: number[] = [255, 255, 255, 255]) {
     return twgl.createTexture(gl, {
         minMag: gl.NEAREST,
-        src: new Uint8Array([255, 255, 255, 255]),
+        src: new Uint8Array(color),
     });
 }
 
-export function getWhiteImageData() {
+function getWhiteImageData(color: number[] = [255, 255, 255, 255]) {
     const data = new ImageData(1, 1);
-    data.data[0] = 255;
-    data.data[1] = 255;
-    data.data[2] = 255;
-    data.data[3] = 255;
+    data.data[0] = color[0];
+    data.data[1] = color[1];
+    data.data[2] = color[2];
+    data.data[3] = color[3];
     return data;
 }
 
 
-export function myDrawObjectList(gl: WebGL2RenderingContext, objectsToDraw: twgl.DrawObject[]) {
+function myDrawObjectList(gl: WebGL2RenderingContext, objectsToDraw: twgl.DrawObject[]) {
     for(const object of objectsToDraw) {
         twgl.createVAOFromBufferInfo(gl, object.programInfo, object.bufferInfo!)
         gl.useProgram(object.programInfo.program);
@@ -25,4 +25,10 @@ export function myDrawObjectList(gl: WebGL2RenderingContext, objectsToDraw: twgl
         twgl.setBuffersAndAttributes(gl, object.programInfo, object.bufferInfo!);
         twgl.drawBufferInfo(gl, object.bufferInfo!);
     }
+}
+
+export {
+    getWhiteTexture,
+    getWhiteImageData,
+    myDrawObjectList,
 }

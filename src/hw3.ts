@@ -2,13 +2,10 @@ import { mat4, vec3 } from 'gl-matrix';
 import * as twgl from 'twgl.js';
 import { Camera } from './common/camera';
 
-// import three obj loader and mtl loader
-import { createThreeMeshesFromFileName, createDrawObjectsFromMeshes, createBufferColored, createImmutableImageTexture, createTWGLMeshesFromThreeMeshes } from './common/objects/objfile';
-
-import chromeImage from './assets/chrome.png';
 import { Accumlator, AccumlatorExporter } from './common/accumlator';
-import { getWhiteTexture, myDrawObjectList } from './utils/twgl_utils';
 import { RayTracer, Scene } from './common/raytracer';
+import { RayTraceConfigReader } from './common/configs/ray_trace_config';
+import { myDrawObjectList } from './common/utils/twgl_utils';
 
 function do_raytracing(rayTracer: RayTracer, percent_callback: (percent: number) => void = (percent: number) => {}) {
     const imageData = rayTracer.do_raytracing(200, 200, (percent: number) => {
@@ -25,8 +22,8 @@ function do_raytracing(rayTracer: RayTracer, percent_callback: (percent: number)
     raytraceCanvas.width = imageData.width;
     raytraceCanvas.height = imageData.height;
 
+    // get image
     raytraceContext.putImageData(imageData, 0, 0);
-
 }
 
 async function main() {
@@ -48,16 +45,39 @@ async function main() {
 
     twgl.setDefaults({ attribPrefix: "a_" });
 
-
+    // Config Loader
+    const config_reader = new RayTraceConfigReader(gl);
+    const config_button = document.querySelector("#load_config") as HTMLButtonElement;
+    const config_file_input = document.querySelector("#config") as HTMLInputElement;
+    
     const camera = new Camera(vec3.fromValues(0.0, 8.0, 80.0));
     camera.setup_interaction(canvas);
-    const lightPosition = vec3.fromValues(0, 0, 20);
 
+    let lightPosition = vec3.fromValues(0, 0, 20);
 
     const scene = new Scene(camera, lightPosition);
 
-    const rayTracer = new RayTracer(scene, 1, 1);
 
+    let normalDrawObjects: twgl.DrawObject[] = [];
+    let oitDrawObjects: twgl.DrawObject[] = [];
+
+    config_button.addEventListener('click', async function (e) {
+        if (config_file_input.files == null) {
+            return;
+        }
+        if (config_file_input.files.length == 0) {
+            alert("Please select a config file");
+            return;
+        }
+        const config_file = config_file_input.files[0];
+        const config_data = await config_reader.load(config_file)
+        console.log(config_data);
+        config_reader.set_scene(config_data, scene)
+    });
+
+
+
+    const rayTracer = new RayTracer(scene, 1, 1);
 
     // accumlator and exporter
     const accumlator = new Accumlator(gl);
@@ -66,35 +86,6 @@ async function main() {
     // color, depth and stencil
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-
-
-    const image = new Image();
-    image.src = chromeImage;
-
-    await new Promise<void>((resolve) => {
-        image.onload = () => {
-            resolve();
-        }
-    });
-
-    console.log(image.width, image.height)
-    const image_texture_cube = createImmutableImageTexture(gl, image);
-
-    const cubeVertices = twgl.primitives.createCubeVertices(4);
-    const cubeBuffer = createBufferColored(cubeVertices, gl, 1);
-
-    // load with three.js
-    const three_meshes = await createThreeMeshesFromFileName('./models/nanosuit/nanosuit', gl);
-    console.log(three_meshes);
-
-    const meshes = await createTWGLMeshesFromThreeMeshes(three_meshes, gl);
-    const meshDrawObjects = createDrawObjectsFromMeshes(meshes, accumlator.normalprogramInfo);
-
-    for(let i = 0; i < three_meshes.length; i++) {
-        await scene.add_mesh(three_meshes[i] as THREE.Mesh);
-    }
-
-    console.log(scene)
 
     const button = document.querySelector("#render") as HTMLButtonElement;
     const progress_span = document.querySelector("#progress") as HTMLSpanElement;
@@ -105,8 +96,6 @@ async function main() {
         });
     }
 
-
-
     function render(time: number) {
         time *= 0.001;
 
@@ -116,46 +105,22 @@ async function main() {
         accumlator.render(canvas, camera, lightPosition,
             // normal render
             (programInfo: twgl.ProgramInfo) => {
-                const modelMatrix = mat4.create();
-                // mat4.rotateX(modelMatrix, modelMatrix, time);
-                // mat4.rotateY(modelMatrix, modelMatrix, time);
-
-                const uniforms = {
-                    u_model_matrix: modelMatrix,
-                };
-
-                twgl.setUniforms(programInfo, uniforms);
-
-                myDrawObjectList(gl, meshDrawObjects);
+                twgl.setUniforms(programInfo, {
+                    u_model_matrix: mat4.create(),
+                });
+                myDrawObjectList(gl, normalDrawObjects);
 
             },
             // oit render
             (programInfo: twgl.ProgramInfo) => {
-                const modelMatrix = mat4.create();
-                // move the cube
-                mat4.translate(modelMatrix, modelMatrix, vec3.fromValues(0.0, 0.0, 0.0));
-                // rotate the cube
-                mat4.rotateX(modelMatrix, modelMatrix, time);
-                mat4.rotateY(modelMatrix, modelMatrix, time);
-
-                const uniforms = {
-                    u_model_matrix: modelMatrix,
-                    u_texture: image_texture_cube,
-                    u_specular_texture: getWhiteTexture(gl),
-                    u_bump_texture: getWhiteTexture(gl),
-                };
-
-                twgl.setUniforms(programInfo, uniforms);
-
-                twgl.createVAOFromBufferInfo(gl, programInfo, cubeBuffer);
-                twgl.setBuffersAndAttributes(gl, programInfo, cubeBuffer);
-                twgl.drawBufferInfo(gl, cubeBuffer);
-
+                twgl.setUniforms(programInfo, {
+                    u_model_matrix: mat4.create(),
+                });
+                myDrawObjectList(gl, oitDrawObjects);
             });
 
         // render frame buffer to screen
         accum_exporter.render(canvas);
-
 
         requestAnimationFrame(render);
     }

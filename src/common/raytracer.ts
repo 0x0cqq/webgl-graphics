@@ -1,8 +1,8 @@
 import { vec3, vec2, vec4, glMatrix } from "gl-matrix";
 import { Camera } from "./camera";
-import { deg_to_rad } from "../utils/math_utils";
+import { deg_to_rad } from "./utils/math_utils";
 import * as THREE from 'three';
-import { createImageDataFromMesh, createVerticesFromMesh } from "./objects/objfile";
+import { createTWGLVerticesFromThreeMesh, createImageDataFromThreeMesh } from './meshs/mesh_three';
 
 function checkUV(uv: vec2): boolean {
     if(uv[0] >= 0 && uv[0] <= 1 && uv[1] >= 0 && uv[1] <= 1) {
@@ -169,7 +169,7 @@ class TriangleFace {
 
 }
 
-class Mesh {
+export class Mesh {
     vertices: vec3[];
     normal: vec3[];
     texcoord: vec2[];
@@ -239,6 +239,27 @@ class Mesh {
 }
 
 
+async function createRayTraceMeshFromThreeMesh(three_mesh: THREE.Mesh) {
+    // 1. get the vertices, normals, texcoords
+    const v = createTWGLVerticesFromThreeMesh(three_mesh);
+    // 2. get the images
+    const image = await createImageDataFromThreeMesh(three_mesh);
+    
+    console.log('v', v, 'image', image)
+
+    // 3. create the mesh
+    const n_elements = v.position.length / 3;
+    const vertices: vec3[] = []
+    const normals: vec3[] = []
+    const texcoords: vec2[] = []
+    for(let i = 0; i < n_elements; i++) {
+        vertices.push(vec3.fromValues(v.position[i * 3], v.position[i * 3 + 1], v.position[i * 3 + 2]));
+        normals.push(vec3.fromValues(v.normal[i * 3], v.normal[i * 3 + 1], v.normal[i * 3 + 2]));
+        texcoords.push(vec2.fromValues(v.texcoord[i * 2], v.texcoord[i * 2 + 1]));
+    }
+    const mesh = new Mesh(vertices, normals, texcoords, image.diffuse_texture, image.specular_texture, image.bump_texture);
+    return mesh;
+}
 
 
 
@@ -253,29 +274,14 @@ export class Scene {
         this.objects = [];
     }
     // add a mesh object to the scene
-    async add_mesh(three_mesh: THREE.Mesh) {
+    async addThreeMesh(three_mesh: THREE.Mesh) {
         console.log('add mesh', three_mesh)
-        // 1. get the vertices, normals, texcoords
-        const v = createVerticesFromMesh(three_mesh);
-        // 2. get the images
-        const image = await createImageDataFromMesh(three_mesh);
-        
-        console.log('v', v, 'image', image)
-
-        // 3. create the mesh
-        const n_elements = v.position.length / 3;
-        const vertices: vec3[] = []
-        const normals: vec3[] = []
-        const texcoords: vec2[] = []
-        for(let i = 0; i < n_elements; i++) {
-            vertices.push(vec3.fromValues(v.position[i * 3], v.position[i * 3 + 1], v.position[i * 3 + 2]));
-            normals.push(vec3.fromValues(v.normal[i * 3], v.normal[i * 3 + 1], v.normal[i * 3 + 2]));
-            texcoords.push(vec2.fromValues(v.texcoord[i * 2], v.texcoord[i * 2 + 1]));
-        }
-        const mesh = new Mesh(vertices, normals, texcoords, image.diffuse_texture, image.specular_texture, image.bump_texture);
-        console.log(mesh)
-        // 4. add faces to the scene
+        const mesh = await createRayTraceMeshFromThreeMesh(three_mesh);
         this.objects.push(mesh);
+    }
+
+    addMesh(twgl_mesh: Mesh) {
+        this.objects.push(twgl_mesh);
     }
     
     // return null if no intersection
@@ -300,7 +306,6 @@ export class Scene {
             }
         }
         return nearest_face;
-    
     }
 }
 

@@ -1,0 +1,36 @@
+{
+    "camera": {
+        "position": [0, 0, 20],
+        "angle": [-90, 0],
+        "zoom": 45
+    },
+    "light_position": [0, 0, 10],
+    "objects": [
+        {
+            "position": [0, 0, 0],
+            "shape": 0, 
+            "material": 0,
+            "texture": {
+                "type": 2,
+                "file": "./models/nanosuit/nanosuit"
+            }
+        },
+        {
+            "position": [5, 0, 0],
+            "shape": 1,
+            "material": 1,
+            "texture": {
+                "type": 0
+            }
+        },
+        {
+            "position": [0, 0, 5],
+            "shape": 2,
+            "material": 2,
+            "texture": {
+                "type": 1,
+                "file": "./textures/wood.jpg"
+            }
+        }
+    ]
+}

@@ -1,5 +1,5 @@
 import { vec3, mat4 } from "gl-matrix";
-import { rad_to_deg, deg_to_rad } from "../utils/math_utils";
+import { rad_to_deg, deg_to_rad } from "./utils/math_utils";
 
 export enum CameraMovement {
     FORWARD,

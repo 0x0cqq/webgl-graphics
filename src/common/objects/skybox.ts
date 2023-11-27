@@ -4,7 +4,7 @@ import { mat4, vec3 } from "gl-matrix";
 import skyboxVertexShaderSource from "../../shaders/skybox/skybox.vs";
 import skyboxFragmentShaderSource from "../../shaders/skybox/skybox.fs";
 import { Camera } from "../camera";
-import { DrawObject } from "../draw_object";
+import { DrawObject } from "./draw_object";
 
 
 export class SkyBox implements DrawObject {

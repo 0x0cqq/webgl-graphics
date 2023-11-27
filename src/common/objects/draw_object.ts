@@ -1,4 +1,4 @@
-import { Camera } from "./camera";
+import { Camera } from "../camera";
 import * as twgl from "twgl.js";
 
 export interface DrawObject {  

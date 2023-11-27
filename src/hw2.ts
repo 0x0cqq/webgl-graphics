@@ -16,7 +16,7 @@ import { Cube } from './common/objects/cube';
 import { FramebufferExporter } from './common/frame_buffer';
 import { CollisionTest } from './common/collision_test';
 
-import { ConfigData, ConfigReader } from './common/config';
+import { ConfigData, ConfigReader } from './common/configs/config';
 import { Ball } from './common/objects/ball';
 import { BasicObject } from './common/objects/basic_object';
 
