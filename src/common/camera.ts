@@ -151,7 +151,7 @@ export class Camera {
         return view;
     }
 
-    get_projection_matrix(width: number, height: number, near: number = 1, far: number = 100): mat4 {
+    get_projection_matrix(width: number, height: number, near: number = 1, far: number = 1000): mat4 {
         const projectionMatrix = mat4.perspective(
             mat4.create(),
             deg_to_rad(this.zoom),

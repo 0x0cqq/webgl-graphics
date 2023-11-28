@@ -12,7 +12,7 @@ import RayTraceWorker from './common/workers/ray_trace.worker';
 function do_raytracing(rayTracer: RayTracer, percent_callback: (percent: number) => void = (percent: number) => {}) {
 
     console.log(rayTracer.scene)
-    const imageData = rayTracer.do_raytracing(100, 100, (percent: number) => {
+    const imageData = rayTracer.do_raytracing(200, 200, (percent: number) => {
         percent_callback(percent);
     });
 
@@ -84,7 +84,7 @@ async function main() {
 
 
 
-    const rayTracer = new RayTracer(scene, 1, 1);
+    const rayTracer = new RayTracer(scene, 3, 1);
 
     // accumlator and exporter
     const accumlator = new Accumlator(gl);

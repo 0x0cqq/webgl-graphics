@@ -76,7 +76,7 @@ function getReflectedRayDirection(ray: vec3, normal: vec3): vec3 {
     const normal_normed = vec3.normalize(vec3.create(), normal);
     // ray 在 normal 上的投影
     const projection = vec3.scale(vec3.create(), normal_normed, vec3.dot(ray_normed, normal_normed));
-    const delta = vec3.sub(vec3.create(), ray_normed, projection);
+    const delta = vec3.sub(vec3.create(), projection, ray_normed);
     // 这里要两倍
     const reflected = vec3.scaleAndAdd(vec3.create(), ray_normed, delta, 2);
     const reflected_normed = vec3.normalize(vec3.create(), reflected);
@@ -128,7 +128,7 @@ class TriangleFace {
         const b2 = vec3.dot(s2, ray.direction) / s1_dot_e1;
         const p = vec3.scaleAndAdd(vec3.create(), ray.origin, ray.direction, t);
 
-        if (t > 0 && b1 > 0 && b2 > 0 && b1 + b2 < 1) {
+        if (t > 1e-5 && b1 > 0 && b2 > 0 && b1 + b2 < 1) {
             return [true, p, t, b1, b2]
         } else {
             return [false, vec3.fromValues(0, 0, 0), 0, 0, 0]
@@ -177,20 +177,26 @@ class TriangleFace {
 }
 
 class Mesh {
-    model_matrix: mat4;
+    model_matrix: mat4;     
 
     vertices: vec3[];
     normal: vec3[];
     texcoord: vec2[];
     min: vec3;
     max: vec3;
+
+    reflect: boolean;
+    transparent: boolean;
+
     diffuse_image: ImageData;
     specular_image: ImageData;
     bump_image: ImageData;
 
-    constructor(position: vec3, vertices: vec3[], normal: vec3[], texcoord: vec2[], diffuse_image: ImageData, specular_image: ImageData, bump_image: ImageData) {
+    constructor(position: vec3, reflect: boolean, transparent: boolean, vertices: vec3[], normal: vec3[], texcoord: vec2[], diffuse_image: ImageData, specular_image: ImageData, bump_image: ImageData) {
         this.model_matrix = mat4.fromTranslation(mat4.create(), position);
         this.vertices = vertices;
+        this.reflect = reflect;
+        this.transparent = transparent;
         this.normal = normal;
         this.texcoord = texcoord;
         this.diffuse_image = diffuse_image;
@@ -273,7 +279,7 @@ async function createRayTraceMeshFromThreeMesh(three_mesh: THREE.Mesh, position:
         normals.push(vec3.fromValues(v.normal[i * 3], v.normal[i * 3 + 1], v.normal[i * 3 + 2]));
         texcoords.push(vec2.fromValues(v.texcoord[i * 2], v.texcoord[i * 2 + 1]));
     }
-    const mesh = new Mesh(position, vertices, normals, texcoords, image.diffuse_texture, image.specular_texture, image.bump_texture);
+    const mesh = new Mesh(position, false, false, vertices, normals, texcoords, image.diffuse_texture, image.specular_texture, image.bump_texture);
     return mesh;
 }
 
@@ -338,65 +344,77 @@ class RayTracer {
         this.sample_times = sample_times;
     }
     // return the color perceived by the ray
-    trace(ray: Ray): vec3 {
-        let total_color = vec3.fromValues(0, 0, 0);
-        for (let i = 1; i <= this.depth; i++) {
-            // the i times reflected/refracted ray
-            const nearest_face = this.scene.find_nearest_intersection(ray);
-            if (nearest_face === null) {
-                return vec3.fromValues(255, 255, 255); // return black
+    trace(ray: Ray, this_depth: number): vec3 {
+        if(this.depth < 0) {
+            return vec3.fromValues(0, 0, 0);
+        }
+        ray.direction = vec3.normalize(vec3.create(), ray.direction);
+        // the i times reflected/refracted ray
+        const nearest_face = this.scene.find_nearest_intersection(ray);
+        if (nearest_face === null) {
+            return vec3.fromValues(0, 0, 0);
+        } else {
+            // get the intersection point
+            const [is_intersected, p, t, b1, b2] = nearest_face.is_intersected_with(ray);
+
+            // // get the normal of the intersection point, use a barycentric interpolation
+            let normal = nearest_face.normal_interpolated(b1, b2);
+            vec3.normalize(normal, normal);
+            // // get the color of the intersection point
+            const this_texcoord = nearest_face.texcoord_interpolated(b1, b2);
+            const diffuse_color = fetchPixelFromImageData(nearest_face.mesh.diffuse_image, this_texcoord);
+            const specular_color = fetchPixelFromImageData(nearest_face.mesh.specular_image, this_texcoord);
+
+            // const bump_color = fetchPixelFromImageData(nearest_face.mesh.bump_image, this_texcoord);
+
+            // // // get the light direction
+            const light_direction = vec3.sub(vec3.create(), this.scene.lightPosition, p);
+            vec3.normalize(light_direction, light_direction);
+
+            // // get the reflect direction
+            const reflect_direction = getReflectedRayDirection(vec3.negate(vec3.create(), ray.direction), normal);
+            const light_reflect_direction = getReflectedRayDirection(light_direction, normal);
+            const ambient_light = 0.3;
+            let diffuse_light = Math.max(0, Math.abs(vec3.dot(normal, light_direction)));
+            // from position to light, detect if there is any object between them
+            let specular_light = Math.pow(Math.max(0, vec3.dot(light_reflect_direction, vec3.negate(vec3.create(), ray.direction))), 20);
+            const shadow_ray = new Ray(p, light_direction);
+            const shadow_face = this.scene.find_nearest_intersection(shadow_ray);
+            if (shadow_face === null) {
+                // no shadow
             } else {
-                // get the intersection point
-                const [is_intersected, p, t, b1, b2] = nearest_face.is_intersected_with(ray);
-                // if(!is_intersected) {
-                //     console.log("error: not intersected")
-                // }
-                // // get the normal of the intersection point, use a barycentric interpolation
-                let normal = nearest_face.normal_interpolated(b1, b2);
-                // // get the color of the intersection point
-                const this_texcoord = nearest_face.texcoord_interpolated(b1, b2);
-                const diffuse_color = fetchPixelFromImageData(nearest_face.mesh.diffuse_image, this_texcoord);
-                const specular_color = fetchPixelFromImageData(nearest_face.mesh.specular_image, this_texcoord);
+                // shadow
+                // console.log('shadow')
+                specular_light = 0;
+                diffuse_light = 0;
+            }
+            
+            
+            
+            
+            // calculate the color
+            let this_place_color = vec4.create();
+            vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, ambient_light);
+            vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, diffuse_light);
+            vec4.scaleAndAdd(this_place_color, this_place_color, specular_color, specular_light);
 
-                // const bump_color = fetchPixelFromImageData(nearest_face.mesh.bump_image, this_texcoord);
-                // // // modify the normal by bump mapping (TODO)
-
-                // // // get the light direction
-                const light_direction = vec3.sub(vec3.create(), this.scene.lightPosition, p);
-                vec3.normalize(light_direction, light_direction);
-
-                // // get the reflect direction
-                const reflect_direction = getReflectedRayDirection(ray.direction, normal);
-                const light_reflect_direction = getReflectedRayDirection(light_direction, normal);
-                // // calculate the color
-                let this_place_color = vec4.create();
-                const ambient_light = 0.3;
-                const diffuse_light = 0.7; //Math.max(0, vec3.dot(normal, light_direction));
-                const specular_light = 0; // Math.pow(Math.max(0, vec3.dot(light_reflect_direction, vec3.negate(vec3.create(), ray.direction))), 32);
-
-                vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, ambient_light);
-                vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, diffuse_light);
-                vec4.scaleAndAdd(this_place_color, this_place_color, specular_color, specular_light);
-
-
-                // // update the ray
-                // ray.origin = p;
-                // ray.direction = reflect_direction;
-
-                // console.log("intersected")
-                // if(this_place_color[3] <= 10) {
-                //     return vec3.fromValues(255, 0, 0);
-                // }
+            if(nearest_face.mesh.transparent) {
+                const next_ray = new Ray(p, reflect_direction);
+                const next_color = this.trace(next_ray, this_depth - 1);
+                const this_color = vec3.scale(vec3.create(), vec3.fromValues(this_place_color[0], this_place_color[1], this_place_color[2]), 0.5);
+                return vec3.scaleAndAdd(vec3.create(), this_color, next_color, 0.5);                
+            } else if(nearest_face.mesh.reflect) {
+                const next_ray = new Ray(p, reflect_direction);
+                // console.log('ray', ray.direction)
+                // console.log('normal', normal)
+                // console.log('reflect', next_ray.direction)
+                const this_color = vec3.scale(vec3.create(), vec3.fromValues(this_place_color[0], this_place_color[1], this_place_color[2]), 0.5);
+                const next_color =  this.trace(next_ray, this_depth - 1); 
+                return vec3.scaleAndAdd(vec3.create(), this_color, next_color, 0.8);
+            } else {
                 return vec3.fromValues(this_place_color[0], this_place_color[1], this_place_color[2]);
             }
         }
-        return total_color;
-    }
-
-    pack() {
-        // jsonify the whole ray tracer
-
-
     }
 
     do_raytracing(width: number, height: number, callback: (percent: number) => void): ImageData {
@@ -422,7 +440,7 @@ class RayTracer {
                     const origin = this.scene.camera.get_eye_position()
                     const direction = getRayDirectionFromUV([i / width, j / height], [width, height], this.scene.camera);
                     const ray = new Ray(origin, direction);
-                    const pixel = this.trace(ray);
+                    const pixel = this.trace(ray, this.depth);
                     // use a moving average to get the color
                     const index = (j * width + i) * 4;
                     color_buffer[index] = pixel[0];

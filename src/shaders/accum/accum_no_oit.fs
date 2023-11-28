@@ -52,7 +52,7 @@ void main() {
 
     float diffuse = nDotL;
     float ambient = 0.3;
-    float specular = pow(max(dot(reflect_direction, eye_direction), 0.0), 20.0);
+    float specular = pow(max(dot(reflect_direction, eye_direction), 0.0), 32.0) / 2.0;
 
     vec3 diffuse_color = base_color.rgb * diffuse;
     vec3 ambient_color = base_color.rgb * ambient;

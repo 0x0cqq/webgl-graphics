@@ -41,6 +41,7 @@ interface TextureData {
 
 interface RayTraceObjectData {
     position: number[]; // vec3
+    size?: number;
     shape: ObjectShapeType;
     material: MaterialType; // will be ignored if file texture is provided
     texture: TextureData;
@@ -105,11 +106,11 @@ class RayTraceConfigReader {
         camera.set_zoom(cameraData.zoom);
     }
 
-    private getVerticesFromType(shape: ObjectShapeType): { [key: string]: twgl.primitives.TypedArray } {
+    private getVerticesFromType(shape: ObjectShapeType, size: number): { [key: string]: twgl.primitives.TypedArray } {
         if (shape == ObjectShapeType.SPHERE) {
-            return twgl.primitives.createSphereVertices(4, 32, 32);
+            return twgl.primitives.createSphereVertices(size, 32, 32);
         } else if (shape == ObjectShapeType.CUBE) {
-            return twgl.primitives.createCubeVertices(4);
+            return twgl.primitives.createCubeVertices(size);
         } else {
             console.error("Unknown shape type");
             return {};
@@ -176,7 +177,8 @@ class RayTraceConfigReader {
     
 
     private async createMeshesFromObject(objectData: RayTraceObjectData) {
-        const indexed_vertices = this.getVerticesFromType(objectData.shape);
+        const size = objectData.size ? objectData.size : 4;
+        const indexed_vertices = this.getVerticesFromType(objectData.shape, size);
         const vertices = this.extractIndicesFromTypedArray(indexed_vertices)
 
         const position = this.createVec3ArrayFromTypedArray(vertices.position);
@@ -187,7 +189,10 @@ class RayTraceConfigReader {
 
         const this_position = vec3.fromValues(objectData.position[0], objectData.position[1], objectData.position[2]);
 
-        const mesh = new Mesh(this_position, position, normals, texcoord, imagedata, getWhiteImageData(), getWhiteImageData());
+        const reflected = objectData.material == MaterialType.SPECULAR ? true : false;
+        const transparent = objectData.material == MaterialType.REFRACTIVE ? true : false;
+
+        const mesh = new Mesh(this_position, reflected, transparent, position, normals, texcoord, imagedata, getWhiteImageData([50, 50, 50]), getWhiteImageData());
         return [mesh];
     }
 
@@ -268,7 +273,8 @@ class RayTraceConfigReader {
                 normalDrawObjects.push(drawObject);
             }
         } else {
-            const indexed_vertices = this.getVerticesFromType(objectData.shape);
+            const size = objectData.size ? objectData.size : 4;
+            const indexed_vertices = this.getVerticesFromType(objectData.shape, size);
             const vertices = this.extractIndicesFromTypedArray(indexed_vertices)
 
             console.log('vertices of generated objects', vertices);
@@ -309,7 +315,6 @@ class RayTraceConfigReader {
             }
 
             if(objectData.material == MaterialType.REFRACTIVE) {
-
                 oitDrawObjects.push(drawObject);
             } else {
                 normalDrawObjects.push(drawObject);
