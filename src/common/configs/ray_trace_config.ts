@@ -176,7 +176,9 @@ class RayTraceConfigReader {
     
 
     private async createMeshesFromObject(objectData: RayTraceObjectData) {
-        const vertices = this.getVerticesFromType(objectData.shape);
+        const indexed_vertices = this.getVerticesFromType(objectData.shape);
+        const vertices = this.extractIndicesFromTypedArray(indexed_vertices)
+
         const position = this.createVec3ArrayFromTypedArray(vertices.position);
         const normals = this.createVec3ArrayFromTypedArray(vertices.normal);
         const texcoord = this.createVec2ArrayFromTypedArray(vertices.texcoord);
@@ -221,7 +223,37 @@ class RayTraceConfigReader {
         }
     }
 
-    
+    extractIndicesFromTypedArray(vertices: { [key: string]: twgl.primitives.TypedArray }): { [key: string]: twgl.primitives.TypedArray} {
+        const result = {} as { [key: string]: twgl.primitives.TypedArray };
+        // if indices is not provided, return the original vertices
+        if(vertices.indices == undefined) {
+            return vertices;
+        }
+        const indices = vertices.indices;
+        const position = vertices.position;
+        const normal = vertices.normal;
+        const texcoord = vertices.texcoord;
+        const n_elements = indices.length; // 有这么多个顶点
+        const new_position = new Float32Array(n_elements * 3);
+        const new_normal = new Float32Array(n_elements * 3);
+        const new_texcoord = new Float32Array(n_elements * 2);
+
+        for(let i = 0; i < n_elements; i++) {
+            const i0 = indices[i];
+            new_position[i * 3] = position[i0 * 3];
+            new_position[i * 3 + 1] = position[i0 * 3 + 1];
+            new_position[i * 3 + 2] = position[i0 * 3 + 2];
+            new_normal[i * 3] = normal[i0 * 3];
+            new_normal[i * 3 + 1] = normal[i0 * 3 + 1];
+            new_normal[i * 3 + 2] = normal[i0 * 3 + 2];
+            new_texcoord[i * 2] = texcoord[i0 * 2];
+            new_texcoord[i * 2 + 1] = texcoord[i0 * 2 + 1];
+        }
+        result.position = new_position;
+        result.normal = new_normal;
+        result.texcoord = new_texcoord;
+        return result;
+    }
 
     async createDrawObjectFromObjectData(objectData: RayTraceObjectData, normalProgramInfo: twgl.ProgramInfo, oitProgramInfo: twgl.ProgramInfo) {
         const normalDrawObjects: twgl.DrawObject[] = []; // for normal objects 
@@ -236,7 +268,11 @@ class RayTraceConfigReader {
                 normalDrawObjects.push(drawObject);
             }
         } else {
-            const vertices = this.getVerticesFromType(objectData.shape);
+            const indexed_vertices = this.getVerticesFromType(objectData.shape);
+            const vertices = this.extractIndicesFromTypedArray(indexed_vertices)
+
+            console.log('vertices of generated objects', vertices);
+
             if(objectData.material == MaterialType.REFRACTIVE) {
                 addRandomColor(vertices, 0.5);
             } else {

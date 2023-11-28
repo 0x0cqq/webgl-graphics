@@ -21,7 +21,11 @@ function clamp(num: number) {
 }
 
 function repeat(num: number) {
-    return num - Math.floor(num);
+    if(num > 1) {
+        return num - 1;
+    } else {
+        return num;
+    }
 }
 
 // uv is in [0, 1] x [0, 1] 
@@ -32,7 +36,7 @@ function fetchPixelFromImageData(image: ImageData, uv: vec2): vec4 {
     const u = repeat(uv[0]);
     const v = repeat(uv[1]);
     const x = Math.floor(u * image.width);
-    const y = Math.floor((v) * image.height);
+    const y = Math.floor(v * image.height);
     const index = (y * image.width + x) * 4;
     return vec4.fromValues(image.data[index], image.data[index + 1], image.data[index + 2], image.data[index + 3]);
 }
@@ -52,7 +56,7 @@ function getRayDirectionFromUV(uv: vec2, size: vec2, camera: Camera): vec3 {
     const front_axis = vec3.clone(camera.front_axis);
     // the bias of the ray in x direction and y direction
     // 这里 fov 默认是 y 方向的，x 方向的 fov 需要根据宽高比来计算
-    const bias_x = (uv[0] - 0.5), fov_x = fov * size[0] / size[1];
+    const bias_x = - (uv[0] - 0.5), fov_x = fov * size[0] / size[1];
     const bias_y = - (uv[1] - 0.5), fov_y = fov;
     const theta_x = Math.atan(bias_x / 2 * Math.tan(fov_x / 2));
     const theta_y = Math.atan(bias_y / 2 * Math.tan(fov_y / 2));
@@ -140,25 +144,25 @@ class TriangleFace {
     // 
     vec2_interpolated(b1: number, b2: number, v1: vec2, v2: vec2, v3: vec2): vec2 {
         const result = vec2.create();
-        vec2.scaleAndAdd(result, result, v1, b1);
-        vec2.scaleAndAdd(result, result, v2, b2);
-        vec2.scaleAndAdd(result, result, v3, 1 - b1 - b2);
+        vec2.scaleAndAdd(result, result, v2, b1);
+        vec2.scaleAndAdd(result, result, v3, b2);
+        vec2.scaleAndAdd(result, result, v1, 1 - b1 - b2);
         return result;
     }
 
     vec3_interpolated(b1: number, b2: number, v1: vec3, v2: vec3, v3: vec3): vec3 {
         const result = vec3.create();
-        vec3.scaleAndAdd(result, result, v1, b1);
-        vec3.scaleAndAdd(result, result, v2, b2);
-        vec3.scaleAndAdd(result, result, v3, 1 - b1 - b2);
+        vec3.scaleAndAdd(result, result, v2, b1);
+        vec3.scaleAndAdd(result, result, v3, b2);
+        vec3.scaleAndAdd(result, result, v1, 1 - b1 - b2);
         return result;
     }
 
     vec4_interpolated(b1: number, b2: number, v1: vec4, v2: vec4, v3: vec4): vec4 {
         const result = vec4.create();
-        vec4.scaleAndAdd(result, result, v1, b1);
-        vec4.scaleAndAdd(result, result, v2, b2);
-        vec4.scaleAndAdd(result, result, v3, 1 - b1 - b2);
+        vec4.scaleAndAdd(result, result, v2, b1);
+        vec4.scaleAndAdd(result, result, v3, b2);
+        vec4.scaleAndAdd(result, result, v1, 1 - b1 - b2);
         return result;
     }
 
@@ -367,8 +371,8 @@ class RayTracer {
                 // // calculate the color
                 let this_place_color = vec4.create();
                 const ambient_light = 0.3;
-                const diffuse_light = Math.max(0, vec3.dot(normal, light_direction));
-                const specular_light = Math.pow(Math.max(0, vec3.dot(light_reflect_direction, vec3.negate(vec3.create(), ray.direction))), 3);
+                const diffuse_light = 0.7; //Math.max(0, vec3.dot(normal, light_direction));
+                const specular_light = 0; // Math.pow(Math.max(0, vec3.dot(light_reflect_direction, vec3.negate(vec3.create(), ray.direction))), 32);
 
                 vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, ambient_light);
                 vec4.scaleAndAdd(this_place_color, this_place_color, diffuse_color, diffuse_light);
